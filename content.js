@@ -57,11 +57,6 @@ const HIDE_SELECTORS = {
     sidebar: 'aside',
     comments: 'div[data-test-id="comments-page"]',
   },
-  snapchat: {
-    stories: 'div[data-testid="stories"]',
-    discover: 'div[data-testid="discover"]',
-    spotlight: 'a[href*="spotlight"]',
-  },
 };
 
 function getSiteKey() {
@@ -73,7 +68,6 @@ function getSiteKey() {
   if (hostname.includes('linkedin')) return 'linkedin';
   if (hostname.includes('tiktok')) return 'tiktok';
   if (hostname.includes('reddit')) return 'reddit';
-  if (hostname.includes('snapchat')) return 'snapchat';
   return null;
 }
 

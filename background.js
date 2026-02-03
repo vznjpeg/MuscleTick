@@ -9,7 +9,6 @@ const BLOCKED_DOMAINS = [
   'linkedin.com',
   'tiktok.com',
   'reddit.com',
-  'snapchat.com',
 ];
 
 const DOMAIN_TO_KEY = {
@@ -32,21 +31,22 @@ const DOMAIN_TO_KEY = {
   'www.reddit.com': 'reddit',
   'old.reddit.com': 'reddit',
   'new.reddit.com': 'reddit',
-  'snapchat.com': 'snapchat',
-  'www.snapchat.com': 'snapchat',
 };
+
+// Free tier: only 2 sites can be blocked
+const FREE_SITE_LIMIT = 2;
 
 const DEFAULT_SETTINGS = {
   focusMode: true,
+  isPremium: false,
   blockedSites: {
     instagram: true,
     facebook: true,
-    youtube: true,
-    twitter: true,
-    linkedin: true,
+    youtube: false,
+    twitter: false,
+    linkedin: false,
     tiktok: false,
     reddit: false,
-    snapchat: false,
   },
   hiddenElements: {
     instagram: false,
@@ -56,7 +56,6 @@ const DEFAULT_SETTINGS = {
     linkedin: false,
     tiktok: false,
     reddit: false,
-    snapchat: false,
   },
 };
 
@@ -145,11 +144,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === 'grantTemporaryAccess') {
-    // Grant 5 minute access to the site
+    // Grant 30 SECONDS access to the site (not 5 minutes)
     const url = message.url;
     try {
       const hostname = new URL(url).hostname;
-      const expiryTime = Date.now() + 5 * 60 * 1000; // 5 minutes
+      const expiryTime = Date.now() + 30 * 1000; // 30 seconds only!
 
       chrome.storage.sync.get(['temporaryAccess'], (result) => {
         const tempAccess = result.temporaryAccess || {};
@@ -178,11 +177,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === 'checkPremium') {
+    chrome.storage.sync.get(['settings'], (result) => {
+      const settings = result.settings || DEFAULT_SETTINGS;
+      sendResponse({ isPremium: settings.isPremium || false });
+    });
+    return true;
+  }
+
+  if (message.type === 'upgradeToPremium') {
+    // In a real app, this would verify payment
+    chrome.storage.sync.get(['settings'], (result) => {
+      const settings = result.settings || DEFAULT_SETTINGS;
+      settings.isPremium = true;
+      chrome.storage.sync.set({ settings }, () => {
+        sendResponse({ success: true });
+      });
+    });
+    return true;
+  }
+
   return false;
 });
 
 // Clean up expired temporary access entries periodically
-chrome.alarms.create('cleanupTempAccess', { periodInMinutes: 5 });
+chrome.alarms.create('cleanupTempAccess', { periodInMinutes: 1 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'cleanupTempAccess') {
@@ -205,11 +224,11 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
-// Track streak - check daily
-chrome.alarms.create('checkStreak', { periodInMinutes: 60 });
+// Daily reset check - runs every hour
+chrome.alarms.create('dailyReset', { periodInMinutes: 60 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'checkStreak') {
+  if (alarm.name === 'dailyReset') {
     chrome.storage.sync.get(['stats'], (result) => {
       const stats = result.stats || {};
       const todayKey = new Date().toISOString().slice(0, 10);
@@ -226,6 +245,9 @@ chrome.alarms.onAlarm.addListener((alarm) => {
           chrome.storage.sync.set({ stats });
         }
       }
+
+      // Note: dailyBlocks automatically resets because it uses date keys
+      // Each new day gets a fresh count since we use todayKey as the key
     });
   }
 });

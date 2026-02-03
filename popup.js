@@ -8,20 +8,21 @@ const SITES = [
   { id: 'linkedin', name: 'LinkedIn', emoji: '\uD83D\uDCBC', domain: 'linkedin.com' },
   { id: 'tiktok', name: 'TikTok', emoji: '\uD83C\uDFB5', domain: 'tiktok.com' },
   { id: 'reddit', name: 'Reddit', emoji: '\uD83E\uDD16', domain: 'reddit.com' },
-  { id: 'snapchat', name: 'Snapchat', emoji: '\uD83D\uDC7B', domain: 'snapchat.com' },
 ];
+
+const FREE_SITE_LIMIT = 2;
 
 const DEFAULT_SETTINGS = {
   focusMode: true,
+  isPremium: false,
   blockedSites: {
     instagram: true,
     facebook: true,
-    youtube: true,
-    twitter: true,
-    linkedin: true,
+    youtube: false,
+    twitter: false,
+    linkedin: false,
     tiktok: false,
     reddit: false,
-    snapchat: false,
   },
   hiddenElements: {
     instagram: false,
@@ -31,7 +32,6 @@ const DEFAULT_SETTINGS = {
     linkedin: false,
     tiktok: false,
     reddit: false,
-    snapchat: false,
   },
 };
 
@@ -68,13 +68,58 @@ function getTodayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function countBlockedSites(settings) {
+  let count = 0;
+  for (const siteId of Object.keys(settings.blockedSites || {})) {
+    if (settings.blockedSites[siteId]) count++;
+  }
+  return count;
+}
+
+function showUpgradeModal() {
+  // Create modal
+  const modal = document.createElement('div');
+  modal.className = 'upgrade-modal';
+  modal.innerHTML = `
+    <div class="upgrade-content">
+      <div class="upgrade-icon">&#x1F4AA;</div>
+      <h2>upgrade to premium</h2>
+      <p>free users can only block 2 sites</p>
+      <ul class="upgrade-features">
+        <li>&#x2705; Block unlimited sites</li>
+        <li>&#x2705; Custom timer settings</li>
+        <li>&#x2705; Export your data</li>
+        <li>&#x2705; Choose your exercises</li>
+      </ul>
+      <button class="btn-upgrade" id="upgradePremium">UPGRADE - $4.99</button>
+      <button class="btn-close" id="closeModal">maybe later</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  document.getElementById('closeModal').addEventListener('click', () => {
+    modal.remove();
+  });
+
+  document.getElementById('upgradePremium').addEventListener('click', async () => {
+    // In a real app, this would trigger payment flow
+    chrome.runtime.sendMessage({ type: 'upgradeToPremium' }, () => {
+      modal.remove();
+      location.reload();
+    });
+  });
+}
+
 function renderSiteList(container, sites, settingsKey, settings, toggleClass) {
   container.innerHTML = '';
+  const isPremium = settings.isPremium || false;
+  const blockedCount = countBlockedSites(settings);
+
   sites.forEach((site) => {
     const row = document.createElement('div');
     row.className = 'site-row';
 
-    const isChecked = settings[settingsKey][site.id] ? 'checked' : '';
+    const isChecked = settings[settingsKey] && settings[settingsKey][site.id];
 
     row.innerHTML = `
       <div class="site-info">
@@ -82,7 +127,7 @@ function renderSiteList(container, sites, settingsKey, settings, toggleClass) {
         <span class="site-name">${site.name}</span>
       </div>
       <label class="toggle ${toggleClass}">
-        <input type="checkbox" data-site="${site.id}" data-key="${settingsKey}" ${isChecked}>
+        <input type="checkbox" data-site="${site.id}" data-key="${settingsKey}" ${isChecked ? 'checked' : ''}>
         <span class="toggle-slider"></span>
       </label>
     `;
@@ -90,6 +135,17 @@ function renderSiteList(container, sites, settingsKey, settings, toggleClass) {
     const checkbox = row.querySelector('input');
     checkbox.addEventListener('change', async () => {
       const current = await getSettings();
+      const currentCount = countBlockedSites(current);
+
+      // Check paywall for blocked sites only (not hide mode)
+      if (settingsKey === 'blockedSites' && checkbox.checked && !current.isPremium) {
+        if (currentCount >= FREE_SITE_LIMIT) {
+          checkbox.checked = false;
+          showUpgradeModal();
+          return;
+        }
+      }
+
       current[settingsKey][site.id] = checkbox.checked;
       await saveSettings(current);
       chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: current });

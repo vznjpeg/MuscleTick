@@ -18,8 +18,7 @@
     "*://*.x.com/*",
     "*://*.linkedin.com/*",
     "*://*.tiktok.com/*",
-    "*://*.reddit.com/*",
-    "*://*.snapchat.com/*"
+    "*://*.reddit.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -47,8 +46,7 @@
         "*://*.x.com/*",
         "*://*.linkedin.com/*",
         "*://*.tiktok.com/*",
-        "*://*.reddit.com/*",
-        "*://*.snapchat.com/*"
+        "*://*.reddit.com/*"
       ],
       "js": ["content.js"],
       "css": ["content.css"],

@@ -8,7 +8,6 @@ const SITES = [
   { id: 'linkedin', name: 'LinkedIn', emoji: '\uD83D\uDCBC' },
   { id: 'tiktok', name: 'TikTok', emoji: '\uD83C\uDFB5' },
   { id: 'reddit', name: 'Reddit', emoji: '\uD83E\uDD16' },
-  { id: 'snapchat', name: 'Snapchat', emoji: '\uD83D\uDC7B' },
 ];
 
 const EXERCISES = [
@@ -26,17 +25,19 @@ const EXERCISES = [
   { id: 'calfraises', name: '15 Calf Raises', emoji: '\uD83E\uDDB6' },
 ];
 
+const FREE_SITE_LIMIT = 2;
+
 const DEFAULT_SETTINGS = {
   focusMode: true,
+  isPremium: false,
   blockedSites: {
     instagram: true,
     facebook: true,
-    youtube: true,
-    twitter: true,
-    linkedin: true,
+    youtube: false,
+    twitter: false,
+    linkedin: false,
     tiktok: false,
     reddit: false,
-    snapchat: false,
   },
   hiddenElements: {
     instagram: false,
@@ -46,11 +47,9 @@ const DEFAULT_SETTINGS = {
     linkedin: false,
     tiktok: false,
     reddit: false,
-    snapchat: false,
   },
   baseTimer: 30,
   penaltyIncrement: 30,
-  accessDuration: 5,
   enabledExercises: ['pushups', 'squats', 'highknees', 'wallsit', 'jumpingjacks', 'burpees', 'crunches', 'lunges', 'dips', 'plank', 'mountainclimbers', 'calfraises'],
 };
 
@@ -76,9 +75,26 @@ function showSaveNotice() {
   }, 2000);
 }
 
+function countBlockedSites(settings) {
+  let count = 0;
+  for (const siteId of Object.keys(settings.blockedSites || {})) {
+    if (settings.blockedSites[siteId]) count++;
+  }
+  return count;
+}
+
+function showUpgradeModal() {
+  document.getElementById('upgradeModal').classList.remove('hidden');
+}
+
+function hideUpgradeModal() {
+  document.getElementById('upgradeModal').classList.add('hidden');
+}
+
 function renderSiteList(containerId, sites, settingsKey, settings, toggleClass = '') {
   const container = document.getElementById(containerId);
   container.innerHTML = '';
+  const isPremium = settings.isPremium || false;
 
   sites.forEach((site) => {
     const isChecked = settings[settingsKey] && settings[settingsKey][site.id];
@@ -98,6 +114,17 @@ function renderSiteList(containerId, sites, settingsKey, settings, toggleClass =
     const checkbox = row.querySelector('input');
     checkbox.addEventListener('change', async () => {
       const current = await getSettings();
+      const currentCount = countBlockedSites(current);
+
+      // Check paywall for blocked sites only
+      if (settingsKey === 'blockedSites' && checkbox.checked && !current.isPremium) {
+        if (currentCount >= FREE_SITE_LIMIT) {
+          checkbox.checked = false;
+          showUpgradeModal();
+          return;
+        }
+      }
+
       if (!current[settingsKey]) current[settingsKey] = {};
       current[settingsKey][site.id] = checkbox.checked;
       await saveSettings(current);
@@ -111,6 +138,7 @@ function renderSiteList(containerId, sites, settingsKey, settings, toggleClass =
 
 function renderExerciseGrid(settings) {
   const container = document.getElementById('exerciseGrid');
+  if (!container) return;
   container.innerHTML = '';
 
   const enabled = settings.enabledExercises || DEFAULT_SETTINGS.enabledExercises;
@@ -157,67 +185,108 @@ function renderExerciseGrid(settings) {
 
 async function init() {
   const settings = await getSettings();
+  const isPremium = settings.isPremium || false;
+
+  // Show/hide premium elements
+  if (isPremium) {
+    document.getElementById('premiumActive').classList.remove('hidden');
+    document.getElementById('premiumSection').classList.remove('hidden');
+    document.getElementById('limitNotice').classList.add('hidden');
+  } else {
+    document.getElementById('premiumBanner').classList.remove('hidden');
+  }
 
   // Render site lists
   renderSiteList('blockedSitesList', SITES, 'blockedSites', settings);
   renderSiteList('hiddenSitesList', SITES, 'hiddenElements', settings, 'toggle-hide');
 
-  // Timer settings
-  const baseTimer = document.getElementById('baseTimer');
-  const penaltyIncrement = document.getElementById('penaltyIncrement');
-  const accessDuration = document.getElementById('accessDuration');
+  // Premium features (only functional for premium users)
+  if (isPremium) {
+    // Timer settings
+    const baseTimer = document.getElementById('baseTimer');
+    const penaltyIncrement = document.getElementById('penaltyIncrement');
 
-  baseTimer.value = settings.baseTimer || 30;
-  penaltyIncrement.value = settings.penaltyIncrement || 30;
-  accessDuration.value = settings.accessDuration || 5;
-
-  [baseTimer, penaltyIncrement, accessDuration].forEach((select) => {
-    select.addEventListener('change', async () => {
-      const current = await getSettings();
-      current.baseTimer = parseInt(baseTimer.value);
-      current.penaltyIncrement = parseInt(penaltyIncrement.value);
-      current.accessDuration = parseInt(accessDuration.value);
-      await saveSettings(current);
-      showSaveNotice();
-    });
-  });
-
-  // Sync status
-  document.getElementById('syncStatus').textContent = 'Synced via Chrome';
-  document.getElementById('syncBadge').textContent = '\u2713';
-
-  // Reset stats
-  document.getElementById('resetStats').addEventListener('click', async () => {
-    if (confirm('Are you sure you want to reset all your stats? This cannot be undone.')) {
-      await chrome.storage.sync.set({
-        stats: {
-          totalBlockedAttempts: 0,
-          exercisesDone: 0,
-          streak: 0,
-          dailyBlocks: {},
-          timeSaved: 0,
-          lastActiveDate: null,
-        },
+    if (baseTimer) {
+      baseTimer.value = settings.baseTimer || 30;
+      baseTimer.addEventListener('change', async () => {
+        const current = await getSettings();
+        current.baseTimer = parseInt(baseTimer.value);
+        await saveSettings(current);
+        showSaveNotice();
       });
-      showSaveNotice();
     }
-  });
 
-  // Export data
-  document.getElementById('exportData').addEventListener('click', async () => {
-    const result = await chrome.storage.sync.get(['settings', 'stats']);
-    const dataStr = JSON.stringify(result, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'muscletick-data.json';
-    a.click();
-    URL.revokeObjectURL(url);
-  });
+    if (penaltyIncrement) {
+      penaltyIncrement.value = settings.penaltyIncrement || 30;
+      penaltyIncrement.addEventListener('change', async () => {
+        const current = await getSettings();
+        current.penaltyIncrement = parseInt(penaltyIncrement.value);
+        await saveSettings(current);
+        showSaveNotice();
+      });
+    }
 
-  // Exercise grid
-  renderExerciseGrid(settings);
+    // Exercise grid
+    renderExerciseGrid(settings);
+
+    // Export data
+    const exportBtn = document.getElementById('exportData');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', async () => {
+        const result = await chrome.storage.sync.get(['settings', 'stats']);
+        const dataStr = JSON.stringify(result, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'muscletick-data.json';
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    }
+
+    // Reset stats
+    const resetBtn = document.getElementById('resetStats');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', async () => {
+        if (confirm('Are you sure you want to reset all your stats? This cannot be undone.')) {
+          await chrome.storage.sync.set({
+            stats: {
+              totalBlockedAttempts: 0,
+              exercisesDone: 0,
+              streak: 0,
+              dailyBlocks: {},
+              timeSaved: 0,
+              lastActiveDate: null,
+            },
+          });
+          showSaveNotice();
+        }
+      });
+    }
+  }
+
+  // Upgrade buttons
+  const upgradeBtn = document.getElementById('upgradeBtn');
+  if (upgradeBtn) {
+    upgradeBtn.addEventListener('click', showUpgradeModal);
+  }
+
+  const upgradePremium = document.getElementById('upgradePremium');
+  if (upgradePremium) {
+    upgradePremium.addEventListener('click', async () => {
+      // In a real app, this would trigger payment flow
+      chrome.runtime.sendMessage({ type: 'upgradeToPremium' }, () => {
+        hideUpgradeModal();
+        location.reload();
+      });
+    });
+  }
+
+  const closeModal = document.getElementById('closeModal');
+  if (closeModal) {
+    closeModal.addEventListener('click', hideUpgradeModal);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);

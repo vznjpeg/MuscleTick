@@ -3,24 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MuscleTick - Nope!</title>
+  <title>MuscleTick - Time to Move!</title>
   <link rel="stylesheet" href="blocked.css">
 </head>
 <body>
   <div class="container">
-    <!-- Phase 1: Password Wall (fake) -->
-    <div class="phase" id="phasePassword">
-      <div class="lock-icon">&#x1F512;</div>
-      <h1>this site is locked</h1>
-      <p class="sub">enter password to continue</p>
-      <input type="password" id="passwordInput" placeholder="nice try bestie..." autocomplete="off">
-      <button class="btn-primary" id="passwordSubmit">UNLOCK</button>
-      <div class="password-fails" id="passwordFails"></div>
-      <p class="hint-text" id="hintText">psst... there is no password. wait for the workout.</p>
-    </div>
-
-    <!-- Phase 2: Exercise Challenge -->
-    <div class="phase hidden" id="phaseExercise">
+    <!-- Exercise Challenge (shown immediately) -->
+    <div class="phase" id="phaseExercise">
       <div class="exercise-icon" id="exerciseIcon">&#x1F4AA;</div>
       <h1 id="exerciseTitle">time to move!</h1>
       <p class="sub" id="exerciseSub">you wanted <span id="blockedSiteName">this site</span>? earn it.</p>
@@ -58,12 +47,12 @@
       </div>
     </div>
 
-    <!-- Phase 3: Done -->
+    <!-- Done Phase -->
     <div class="phase hidden" id="phaseDone">
       <div class="done-icon">&#x1F3C6;</div>
       <h1>you earned it!</h1>
-      <p class="sub">go ahead, but remember... we're watching &#x1F440;</p>
-      <button class="btn-primary" id="proceedBtn">ENTER SITE</button>
+      <p class="sub">you've got 30 seconds... make it count &#x1F440;</p>
+      <button class="btn-primary btn-proceed" id="proceedBtn">ENTER SITE</button>
       <button class="btn-secondary" id="stayFocused">nah, stay focused &#x1F4AA;</button>
       <div class="motivation-quote" id="motivationQuote"></div>
     </div>

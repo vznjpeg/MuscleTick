@@ -15,24 +15,6 @@ const EXERCISES = [
   { name: '15 Calf Raises', emoji: '\uD83E\uDDB6', desc: 'rise up on your toes, squeeze at the top', icon: '\u2B06\uFE0F' },
 ];
 
-const FAIL_MESSAGES = [
-  'lol nope',
-  'not even close',
-  'bro what',
-  'try touching grass instead',
-  'password machine broke',
-  'the password is exercise',
-  'imagine knowing the password',
-  'wrong again bestie',
-  'slay but no',
-  'respectfully... no',
-  'skill issue',
-  'error 404: password not found',
-  'that ain\'t it chief',
-  'you thought',
-  'delulu is not the solulu here',
-];
-
 const MOTIVATION_QUOTES = [
   '"the only bad workout is the one that didn\'t happen" - some gym bro',
   '"your future self is watching you through memories" - probably tiktok',
@@ -45,15 +27,16 @@ const MOTIVATION_QUOTES = [
 
 let currentExercise = null;
 let timerSeconds = 30;
-let baseTimer = 30;
+const baseTimer = 30;
+const penaltyIncrement = 30;
 let timerInterval = null;
-let failCount = 0;
 let violationsToday = 0;
+let exerciseCompleted = false;
 const circumference = 2 * Math.PI * 54; // circle radius 54
 
 // Get blocked site name from URL params
 const urlParams = new URLSearchParams(window.location.search);
-const blockedUrl = urlParams.get('url') || 'this site';
+const blockedUrl = urlParams.get('url') || 'https://www.google.com';
 const siteName = extractSiteName(blockedUrl);
 
 function extractSiteName(url) {
@@ -139,9 +122,9 @@ function showExercise(exercise) {
 }
 
 function startTimer() {
-  // Calculate penalty: +30s for each violation today beyond the first
+  // Calculate penalty: +30s for each violation today (current one is already counted)
   const penaltyMultiplier = Math.max(0, violationsToday - 1);
-  timerSeconds = baseTimer + (penaltyMultiplier * 30);
+  timerSeconds = baseTimer + (penaltyMultiplier * penaltyIncrement);
 
   const totalSeconds = timerSeconds;
   const ringEl = document.getElementById('ringProgress');
@@ -182,6 +165,7 @@ function startTimer() {
 }
 
 function showDonePhase() {
+  exerciseCompleted = true;
   document.getElementById('phaseExercise').classList.add('hidden');
   document.getElementById('phaseDone').classList.remove('hidden');
 
@@ -192,86 +176,40 @@ function showDonePhase() {
   recordExercise();
 }
 
-// Phase 1: Password
-const passwordInput = document.getElementById('passwordInput');
-const passwordSubmit = document.getElementById('passwordSubmit');
-const passwordFails = document.getElementById('passwordFails');
-const hintText = document.getElementById('hintText');
-
-function handlePasswordAttempt() {
-  failCount++;
-  passwordInput.value = '';
-
-  const msg = document.createElement('div');
-  msg.className = 'fail-msg';
-  msg.textContent = FAIL_MESSAGES[Math.floor(Math.random() * FAIL_MESSAGES.length)];
-  passwordFails.appendChild(msg);
-
-  // Keep only last 3 messages
-  while (passwordFails.children.length > 3) {
-    passwordFails.removeChild(passwordFails.firstChild);
-  }
-
-  // Shake the lock
-  const lock = document.querySelector('.lock-icon');
-  lock.style.animation = 'none';
-  lock.offsetHeight; // trigger reflow
-  lock.style.animation = 'shake 0.5s ease-in-out';
-
-  // Show hint after 3 attempts
-  if (failCount >= 3) {
-    hintText.classList.add('visible');
-  }
-
-  // After 5 attempts, auto-transition to exercise
-  if (failCount >= 5) {
-    transitionToExercise();
-  }
-}
-
-passwordSubmit.addEventListener('click', handlePasswordAttempt);
-passwordInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') handlePasswordAttempt();
-});
-
-// Auto-transition after 30s on password screen anyway
-setTimeout(() => {
-  if (!document.getElementById('phasePassword').classList.contains('hidden')) {
-    transitionToExercise();
-  }
-}, 30000);
-
-async function transitionToExercise() {
-  await recordViolation();
-
-  document.getElementById('phasePassword').classList.add('hidden');
-  document.getElementById('phaseExercise').classList.remove('hidden');
-
-  const el = document.getElementById('blockedSiteName');
-  if (el) el.textContent = siteName;
-
-  document.getElementById('violationCount').textContent = violationsToday;
-
-  const exercise = pickExercise();
-  showExercise(exercise);
-  startTimer();
-}
-
 // Reroll exercise
 document.getElementById('rerollExercise').addEventListener('click', () => {
   const exercise = pickExercise();
   showExercise(exercise);
 });
 
-// Phase 3 buttons
-document.getElementById('proceedBtn').addEventListener('click', () => {
-  // Allow access by sending message to background
-  chrome.runtime.sendMessage({
-    type: 'grantTemporaryAccess',
-    url: blockedUrl,
-  }, () => {
+// Phase 3 buttons - Enter site
+document.getElementById('proceedBtn').addEventListener('click', async () => {
+  if (!exerciseCompleted) return;
+
+  // Grant temporary access and redirect
+  try {
+    await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({
+        type: 'grantTemporaryAccess',
+        url: blockedUrl,
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(response);
+        }
+      });
+    });
+
+    // Small delay to ensure storage is synced, then redirect
+    setTimeout(() => {
+      window.location.href = blockedUrl;
+    }, 100);
+  } catch (err) {
+    console.error('Error granting access:', err);
+    // Try redirecting anyway
     window.location.href = blockedUrl;
-  });
+  }
 });
 
 document.getElementById('stayFocused').addEventListener('click', () => {
@@ -279,11 +217,29 @@ document.getElementById('stayFocused').addEventListener('click', () => {
   window.location.href = 'https://www.google.com';
 });
 
-// Update proceed button style
-document.getElementById('proceedBtn').classList.add('btn-proceed');
-
-// Init
-(async () => {
+// Initialize - skip password phase, go directly to exercise
+async function init() {
   await loadViolations();
+  await recordViolation();
+
+  // Update violation count display
   document.getElementById('violationCount').textContent = violationsToday;
-})();
+
+  // Set blocked site name
+  const el = document.getElementById('blockedSiteName');
+  if (el) el.textContent = siteName;
+
+  // Pick and show exercise
+  const exercise = pickExercise();
+  showExercise(exercise);
+
+  // Start timer immediately
+  startTimer();
+}
+
+// Run init when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
