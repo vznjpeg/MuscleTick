@@ -1,0 +1,289 @@
+// MuscleTick - Blocked Page Controller
+
+const EXERCISES = [
+  { name: '15 Pushups', emoji: '\uD83E\uDDD1\u200D\uD83C\uDFCB\uFE0F', desc: 'chest to the ground, full extension up', icon: '\uD83D\uDCAA' },
+  { name: '10 Squats', emoji: '\uD83E\uDDCE', desc: 'thighs parallel to the floor, back straight', icon: '\uD83E\uDDB5' },
+  { name: '20 High Knees', emoji: '\uD83C\uDFC3', desc: 'drive those knees up, keep it fast', icon: '\u26A1' },
+  { name: '30s Wall Sit', emoji: '\uD83E\uDDF1', desc: 'back flat against wall, thighs parallel', icon: '\uD83C\uDFCB\uFE0F' },
+  { name: '15 Jumping Jacks', emoji: '\u2B50', desc: 'arms overhead, feet apart, stay bouncy', icon: '\uD83C\uDF1F' },
+  { name: '10 Burpees', emoji: '\uD83D\uDD25', desc: 'drop, push up, jump up, repeat', icon: '\uD83D\uDE80' },
+  { name: '20 Crunches', emoji: '\uD83E\uDEE0', desc: 'hands behind head, squeeze at the top', icon: '\uD83C\uDFAF' },
+  { name: '15 Lunges', emoji: '\uD83E\uDDB6', desc: 'alternate legs, knee almost touches ground', icon: '\uD83D\uDC63' },
+  { name: '10 Tricep Dips', emoji: '\uD83D\uDCBA', desc: 'use a chair, lower slow, push up fast', icon: '\uD83D\uDCAA' },
+  { name: '30s Plank', emoji: '\uD83E\uDDF1', desc: 'straight line from head to heels, hold it', icon: '\u23F1\uFE0F' },
+  { name: '20 Mountain Climbers', emoji: '\u26F0\uFE0F', desc: 'fast feet, keep your core tight', icon: '\uD83D\uDD25' },
+  { name: '15 Calf Raises', emoji: '\uD83E\uDDB6', desc: 'rise up on your toes, squeeze at the top', icon: '\u2B06\uFE0F' },
+];
+
+const FAIL_MESSAGES = [
+  'lol nope',
+  'not even close',
+  'bro what',
+  'try touching grass instead',
+  'password machine broke',
+  'the password is exercise',
+  'imagine knowing the password',
+  'wrong again bestie',
+  'slay but no',
+  'respectfully... no',
+  'skill issue',
+  'error 404: password not found',
+  'that ain\'t it chief',
+  'you thought',
+  'delulu is not the solulu here',
+];
+
+const MOTIVATION_QUOTES = [
+  '"the only bad workout is the one that didn\'t happen" - some gym bro',
+  '"your future self is watching you through memories" - probably tiktok',
+  '"touch grass > touch screen" - ancient proverb',
+  '"the grind never stops but your doom scrolling should" - sigma wisdom',
+  '"be the main character of the gym, not the feed" - gen z confucius',
+  '"1% better every day, 100% less scrolling" - math',
+  '"the algorithm can wait, your gains can\'t" - truth',
+];
+
+let currentExercise = null;
+let timerSeconds = 30;
+let baseTimer = 30;
+let timerInterval = null;
+let failCount = 0;
+let violationsToday = 0;
+const circumference = 2 * Math.PI * 54; // circle radius 54
+
+// Get blocked site name from URL params
+const urlParams = new URLSearchParams(window.location.search);
+const blockedUrl = urlParams.get('url') || 'this site';
+const siteName = extractSiteName(blockedUrl);
+
+function extractSiteName(url) {
+  try {
+    const hostname = new URL(url).hostname;
+    const parts = hostname.replace('www.', '').split('.');
+    return parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+  } catch {
+    return 'this site';
+  }
+}
+
+async function loadViolations() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['stats'], (result) => {
+      const stats = result.stats || {};
+      const todayKey = new Date().toISOString().slice(0, 10);
+      violationsToday = (stats.dailyBlocks && stats.dailyBlocks[todayKey]) || 0;
+      resolve(violationsToday);
+    });
+  });
+}
+
+async function recordViolation() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['stats'], (result) => {
+      const stats = result.stats || { totalBlockedAttempts: 0, exercisesDone: 0, streak: 0, dailyBlocks: {}, timeSaved: 0 };
+      const todayKey = new Date().toISOString().slice(0, 10);
+
+      stats.totalBlockedAttempts = (stats.totalBlockedAttempts || 0) + 1;
+      if (!stats.dailyBlocks) stats.dailyBlocks = {};
+      stats.dailyBlocks[todayKey] = (stats.dailyBlocks[todayKey] || 0) + 1;
+      violationsToday = stats.dailyBlocks[todayKey];
+
+      // Add time saved estimate: assume user would have spent 8-15 min scrolling
+      // Bloated by 17% per spec
+      const baseSaved = 8 + Math.random() * 7; // 8-15 minutes
+      const bloatedSaved = baseSaved * 1.17;
+      stats.timeSaved = (stats.timeSaved || 0) + bloatedSaved;
+
+      chrome.storage.sync.set({ stats }, resolve);
+    });
+  });
+}
+
+async function recordExercise() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['stats'], (result) => {
+      const stats = result.stats || { totalBlockedAttempts: 0, exercisesDone: 0, streak: 0, dailyBlocks: {}, timeSaved: 0 };
+      stats.exercisesDone = (stats.exercisesDone || 0) + 1;
+
+      // Update streak
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const lastActive = stats.lastActiveDate || '';
+      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+      if (lastActive === yesterday) {
+        stats.streak = (stats.streak || 0) + 1;
+      } else if (lastActive !== todayKey) {
+        stats.streak = 1;
+      }
+      stats.lastActiveDate = todayKey;
+
+      chrome.storage.sync.set({ stats }, resolve);
+    });
+  });
+}
+
+function pickExercise() {
+  let exercise;
+  do {
+    exercise = EXERCISES[Math.floor(Math.random() * EXERCISES.length)];
+  } while (exercise === currentExercise && EXERCISES.length > 1);
+  currentExercise = exercise;
+  return exercise;
+}
+
+function showExercise(exercise) {
+  document.getElementById('exerciseIcon').textContent = exercise.icon;
+  document.getElementById('exerciseEmoji').textContent = exercise.emoji;
+  document.getElementById('exerciseName').textContent = exercise.name;
+  document.getElementById('exerciseDesc').textContent = exercise.desc;
+}
+
+function startTimer() {
+  // Calculate penalty: +30s for each violation today beyond the first
+  const penaltyMultiplier = Math.max(0, violationsToday - 1);
+  timerSeconds = baseTimer + (penaltyMultiplier * 30);
+
+  const totalSeconds = timerSeconds;
+  const ringEl = document.getElementById('ringProgress');
+  const textEl = document.getElementById('timerText');
+
+  ringEl.style.strokeDasharray = circumference;
+  ringEl.style.strokeDashoffset = '0';
+  textEl.textContent = timerSeconds;
+
+  // Show penalty notice if applicable
+  if (penaltyMultiplier > 0) {
+    const notice = document.getElementById('penaltyNotice');
+    notice.classList.remove('hidden');
+    document.getElementById('penaltyCount').textContent = penaltyMultiplier;
+  }
+
+  timerInterval = setInterval(() => {
+    timerSeconds--;
+    textEl.textContent = Math.max(0, timerSeconds);
+
+    const progress = (totalSeconds - timerSeconds) / totalSeconds;
+    ringEl.style.strokeDashoffset = circumference * (1 - progress);
+
+    // Change color as timer progresses
+    if (progress > 0.75) {
+      ringEl.style.stroke = '#00e676';
+      textEl.style.color = '#00e676';
+    } else if (progress > 0.5) {
+      ringEl.style.stroke = '#ffd600';
+      textEl.style.color = '#ffd600';
+    }
+
+    if (timerSeconds <= 0) {
+      clearInterval(timerInterval);
+      showDonePhase();
+    }
+  }, 1000);
+}
+
+function showDonePhase() {
+  document.getElementById('phaseExercise').classList.add('hidden');
+  document.getElementById('phaseDone').classList.remove('hidden');
+
+  // Random motivational quote
+  const quote = MOTIVATION_QUOTES[Math.floor(Math.random() * MOTIVATION_QUOTES.length)];
+  document.getElementById('motivationQuote').textContent = quote;
+
+  recordExercise();
+}
+
+// Phase 1: Password
+const passwordInput = document.getElementById('passwordInput');
+const passwordSubmit = document.getElementById('passwordSubmit');
+const passwordFails = document.getElementById('passwordFails');
+const hintText = document.getElementById('hintText');
+
+function handlePasswordAttempt() {
+  failCount++;
+  passwordInput.value = '';
+
+  const msg = document.createElement('div');
+  msg.className = 'fail-msg';
+  msg.textContent = FAIL_MESSAGES[Math.floor(Math.random() * FAIL_MESSAGES.length)];
+  passwordFails.appendChild(msg);
+
+  // Keep only last 3 messages
+  while (passwordFails.children.length > 3) {
+    passwordFails.removeChild(passwordFails.firstChild);
+  }
+
+  // Shake the lock
+  const lock = document.querySelector('.lock-icon');
+  lock.style.animation = 'none';
+  lock.offsetHeight; // trigger reflow
+  lock.style.animation = 'shake 0.5s ease-in-out';
+
+  // Show hint after 3 attempts
+  if (failCount >= 3) {
+    hintText.classList.add('visible');
+  }
+
+  // After 5 attempts, auto-transition to exercise
+  if (failCount >= 5) {
+    transitionToExercise();
+  }
+}
+
+passwordSubmit.addEventListener('click', handlePasswordAttempt);
+passwordInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') handlePasswordAttempt();
+});
+
+// Auto-transition after 30s on password screen anyway
+setTimeout(() => {
+  if (!document.getElementById('phasePassword').classList.contains('hidden')) {
+    transitionToExercise();
+  }
+}, 30000);
+
+async function transitionToExercise() {
+  await recordViolation();
+
+  document.getElementById('phasePassword').classList.add('hidden');
+  document.getElementById('phaseExercise').classList.remove('hidden');
+
+  const el = document.getElementById('blockedSiteName');
+  if (el) el.textContent = siteName;
+
+  document.getElementById('violationCount').textContent = violationsToday;
+
+  const exercise = pickExercise();
+  showExercise(exercise);
+  startTimer();
+}
+
+// Reroll exercise
+document.getElementById('rerollExercise').addEventListener('click', () => {
+  const exercise = pickExercise();
+  showExercise(exercise);
+});
+
+// Phase 3 buttons
+document.getElementById('proceedBtn').addEventListener('click', () => {
+  // Allow access by sending message to background
+  chrome.runtime.sendMessage({
+    type: 'grantTemporaryAccess',
+    url: blockedUrl,
+  }, () => {
+    window.location.href = blockedUrl;
+  });
+});
+
+document.getElementById('stayFocused').addEventListener('click', () => {
+  // Go to a productive page instead
+  window.location.href = 'https://www.google.com';
+});
+
+// Update proceed button style
+document.getElementById('proceedBtn').classList.add('btn-proceed');
+
+// Init
+(async () => {
+  await loadViolations();
+  document.getElementById('violationCount').textContent = violationsToday;
+})();

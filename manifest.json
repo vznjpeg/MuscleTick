@@ -1,0 +1,65 @@
+{
+  "manifest_version": 3,
+  "name": "MuscleTick",
+  "version": "1.0.0",
+  "description": "Block distracting sites & earn your scroll with pushups, squats, and more. Track time saved and stay focused.",
+  "permissions": [
+    "storage",
+    "tabs",
+    "webNavigation",
+    "alarms",
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "*://*.instagram.com/*",
+    "*://*.facebook.com/*",
+    "*://*.youtube.com/*",
+    "*://*.twitter.com/*",
+    "*://*.x.com/*",
+    "*://*.linkedin.com/*",
+    "*://*.tiktok.com/*",
+    "*://*.reddit.com/*",
+    "*://*.snapchat.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.instagram.com/*",
+        "*://*.facebook.com/*",
+        "*://*.youtube.com/*",
+        "*://*.twitter.com/*",
+        "*://*.x.com/*",
+        "*://*.linkedin.com/*",
+        "*://*.tiktok.com/*",
+        "*://*.reddit.com/*",
+        "*://*.snapchat.com/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_start"
+    }
+  ],
+  "options_page": "options.html",
+  "web_accessible_resources": [
+    {
+      "resources": ["blocked.html", "blocked.css", "blocked.js", "icons/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

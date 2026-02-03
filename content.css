@@ -1,0 +1,29 @@
+/* MuscleTick Content Styles */
+/* Additional styles injected into target pages */
+
+#muscletick-block-overlay {
+  animation: mtFadeIn 0.3s ease;
+}
+
+@keyframes mtFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Hide notification badges on blocked sites */
+.muscletick-hide-active [class*="notification"],
+.muscletick-hide-active [class*="badge"],
+.muscletick-hide-active [aria-label*="notification"] {
+  display: none !important;
+}
+
+/* Reduce visual noise */
+.muscletick-hide-active [role="complementary"] {
+  opacity: 0.3;
+  filter: blur(2px);
+  pointer-events: none;
+}

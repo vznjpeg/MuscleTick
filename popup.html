@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MuscleTick</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo-row">
+        <img src="icons/icon48.png" alt="MuscleTick" class="logo">
+        <h1>MuscleTick</h1>
+      </div>
+      <p class="tagline">no scroll, only swole</p>
+    </header>
+
+    <div class="stats-banner" id="statsBanner">
+      <div class="stat-item">
+        <span class="stat-value" id="timeSaved">0m</span>
+        <span class="stat-label">time saved today</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <span class="stat-value" id="blocksToday">0</span>
+        <span class="stat-label">blocks today</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <span class="stat-value" id="exercisesDone">0</span>
+        <span class="stat-label">exercises done</span>
+      </div>
+    </div>
+
+    <div class="streak-bar" id="streakBar">
+      <span class="streak-flame">&#x1F525;</span>
+      <span class="streak-text" id="streakText">0 day streak</span>
+    </div>
+
+    <section class="sites-section">
+      <h2>blocked sites</h2>
+      <div class="site-list" id="siteList">
+        <!-- Sites injected by JS -->
+      </div>
+    </section>
+
+    <section class="mode-section">
+      <h2>hide mode</h2>
+      <p class="mode-desc">keep the site but hide the addictive parts</p>
+      <div class="site-list" id="hideModeList">
+        <!-- Hide mode toggles injected by JS -->
+      </div>
+    </section>
+
+    <div class="master-toggle">
+      <button class="btn-big" id="masterToggle">
+        <span class="btn-icon">&#x1F6E1;&#xFE0F;</span>
+        <span class="btn-text">FOCUS MODE ON</span>
+      </button>
+    </div>
+
+    <div class="bottom-links">
+      <button class="link-btn" id="openStats">&#x1F4CA; stats</button>
+      <button class="link-btn" id="openOptions">&#x2699;&#xFE0F; settings</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

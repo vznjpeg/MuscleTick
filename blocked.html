@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MuscleTick - Nope!</title>
+  <link rel="stylesheet" href="blocked.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Phase 1: Password Wall (fake) -->
+    <div class="phase" id="phasePassword">
+      <div class="lock-icon">&#x1F512;</div>
+      <h1>this site is locked</h1>
+      <p class="sub">enter password to continue</p>
+      <input type="password" id="passwordInput" placeholder="nice try bestie..." autocomplete="off">
+      <button class="btn-primary" id="passwordSubmit">UNLOCK</button>
+      <div class="password-fails" id="passwordFails"></div>
+      <p class="hint-text" id="hintText">psst... there is no password. wait for the workout.</p>
+    </div>
+
+    <!-- Phase 2: Exercise Challenge -->
+    <div class="phase hidden" id="phaseExercise">
+      <div class="exercise-icon" id="exerciseIcon">&#x1F4AA;</div>
+      <h1 id="exerciseTitle">time to move!</h1>
+      <p class="sub" id="exerciseSub">you wanted <span id="blockedSiteName">this site</span>? earn it.</p>
+
+      <div class="timer-ring" id="timerRing">
+        <svg viewBox="0 0 120 120">
+          <circle class="ring-bg" cx="60" cy="60" r="54" />
+          <circle class="ring-progress" id="ringProgress" cx="60" cy="60" r="54" />
+        </svg>
+        <div class="timer-text" id="timerText">30</div>
+      </div>
+
+      <div class="exercise-card" id="exerciseCard">
+        <span class="exercise-emoji" id="exerciseEmoji">&#x1F9CE;</span>
+        <div class="exercise-details">
+          <span class="exercise-name" id="exerciseName">15 Pushups</span>
+          <span class="exercise-desc" id="exerciseDesc">chest to the ground, full extension up</span>
+        </div>
+      </div>
+
+      <div class="penalty-notice hidden" id="penaltyNotice">
+        <span>&#x26A0;&#xFE0F;</span>
+        <span>+30s added! that's <span id="penaltyCount">1</span> rule break(s) today</span>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-secondary" id="rerollExercise">&#x1F3B2; different exercise</button>
+      </div>
+
+      <div class="waiting-message" id="waitingMessage">
+        <p>do your reps while the timer counts down</p>
+        <div class="bounce-dots">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase 3: Done -->
+    <div class="phase hidden" id="phaseDone">
+      <div class="done-icon">&#x1F3C6;</div>
+      <h1>you earned it!</h1>
+      <p class="sub">go ahead, but remember... we're watching &#x1F440;</p>
+      <button class="btn-primary" id="proceedBtn">ENTER SITE</button>
+      <button class="btn-secondary" id="stayFocused">nah, stay focused &#x1F4AA;</button>
+      <div class="motivation-quote" id="motivationQuote"></div>
+    </div>
+
+    <div class="violation-counter" id="violationCounter">
+      rule breaks today: <span id="violationCount">0</span>
+    </div>
+  </div>
+
+  <script src="blocked.js"></script>
+</body>
+</html>
