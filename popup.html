@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MuscleTick</title>
+  <title>Lock in</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <div class="container">
     <header>
       <div class="logo-row">
-        <img src="icons/icon48.png" alt="MuscleTick" class="logo">
-        <h1>MuscleTick</h1>
+        <img src="icons/icon48.png" alt="Lock in" class="logo">
+        <h1>Lock in</h1>
       </div>
-      <p class="tagline">no scroll, only swole</p>
+      <p class="tagline">focus mode activated</p>
     </header>
 
     <div class="stats-banner" id="statsBanner">
@@ -42,6 +42,17 @@
       <h2>blocked sites</h2>
       <div class="site-list" id="siteList">
         <!-- Sites injected by JS -->
+      </div>
+
+      <!-- Custom Sites -->
+      <div class="custom-sites-list" id="customSitesList">
+        <!-- Custom sites injected by JS -->
+      </div>
+
+      <!-- Add Custom Site -->
+      <div class="add-custom-site">
+        <input type="text" id="customSiteInput" placeholder="enter website (e.g. netflix.com)" />
+        <button class="btn-add" id="addCustomSite">+</button>
       </div>
     </section>
 

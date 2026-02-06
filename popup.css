@@ -1,4 +1,4 @@
-/* MuscleTick Popup - Gen-Z vibes */
+/* Lock in Popup - Gen-Z vibes */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
 
 * {
@@ -414,6 +414,100 @@ h2 {
 .btn-close:hover {
   border-color: var(--text-dim);
   color: var(--text);
+}
+
+/* Custom Sites */
+.custom-sites-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.custom-site-row {
+  background: var(--surface2);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.btn-remove {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.btn-remove:hover {
+  background: rgba(244, 67, 54, 0.2);
+  color: #f44336;
+}
+
+/* Add Custom Site Input */
+.add-custom-site {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+#customSiteInput {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+#customSiteInput::placeholder {
+  color: var(--text-dim);
+}
+
+#customSiteInput:focus {
+  border-color: var(--accent);
+  background: var(--surface2);
+}
+
+#customSiteInput.error {
+  border-color: #f44336;
+  animation: shake 0.3s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.btn-add {
+  width: 42px;
+  height: 42px;
+  background: linear-gradient(135deg, var(--accent), var(--orange));
+  border: none;
+  border-radius: var(--radius-sm);
+  color: white;
+  font-size: 22px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-add:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
+}
+
+.btn-add:active {
+  transform: scale(0.95);
 }
 
 .hidden {

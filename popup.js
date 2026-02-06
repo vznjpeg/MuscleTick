@@ -33,12 +33,13 @@ const DEFAULT_SETTINGS = {
     tiktok: false,
     reddit: false,
   },
+  customSites: [], // Array of custom blocked domains
 };
 
 async function getSettings() {
   return new Promise((resolve) => {
     chrome.storage.sync.get(['settings'], (result) => {
-      resolve(result.settings || DEFAULT_SETTINGS);
+      resolve({ ...DEFAULT_SETTINGS, ...result.settings });
     });
   });
 }
@@ -70,9 +71,12 @@ function getTodayKey() {
 
 function countBlockedSites(settings) {
   let count = 0;
+  // Count preset blocked sites
   for (const siteId of Object.keys(settings.blockedSites || {})) {
     if (settings.blockedSites[siteId]) count++;
   }
+  // Count custom sites
+  count += (settings.customSites || []).length;
   return count;
 }
 
@@ -87,6 +91,7 @@ function showUpgradeModal() {
       <p>free users can only block 2 sites</p>
       <ul class="upgrade-features">
         <li>&#x2705; Block unlimited sites</li>
+        <li>&#x2705; Add custom websites</li>
         <li>&#x2705; Custom timer settings</li>
         <li>&#x2705; Export your data</li>
         <li>&#x2705; Choose your exercises</li>
@@ -102,11 +107,56 @@ function showUpgradeModal() {
   });
 
   document.getElementById('upgradePremium').addEventListener('click', async () => {
-    // In a real app, this would trigger payment flow
-    chrome.runtime.sendMessage({ type: 'upgradeToPremium' }, () => {
-      modal.remove();
-      location.reload();
+    // Open Stripe payment portal
+    window.open('https://buy.stripe.com/test_YOUR_STRIPE_PAYMENT_LINK', '_blank');
+    modal.remove();
+  });
+}
+
+function normalizeDomain(input) {
+  let domain = input.trim().toLowerCase();
+  // Remove protocol if present
+  domain = domain.replace(/^(https?:\/\/)?(www\.)?/, '');
+  // Remove path if present
+  domain = domain.split('/')[0];
+  // Remove any remaining whitespace
+  domain = domain.trim();
+  return domain;
+}
+
+function isValidDomain(domain) {
+  // Basic domain validation
+  const domainRegex = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}$/i;
+  return domainRegex.test(domain);
+}
+
+function renderCustomSites(settings) {
+  const container = document.getElementById('customSitesList');
+  container.innerHTML = '';
+
+  const customSites = settings.customSites || [];
+
+  customSites.forEach((domain) => {
+    const row = document.createElement('div');
+    row.className = 'site-row custom-site-row';
+    row.innerHTML = `
+      <div class="site-info">
+        <span class="site-emoji">&#x1F310;</span>
+        <span class="site-name">${domain}</span>
+      </div>
+      <button class="btn-remove" data-domain="${domain}">&#x2715;</button>
+    `;
+
+    const removeBtn = row.querySelector('.btn-remove');
+    removeBtn.addEventListener('click', async () => {
+      const current = await getSettings();
+      current.customSites = (current.customSites || []).filter(d => d !== domain);
+      await saveSettings(current);
+      chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: current });
+      renderCustomSites(current);
     });
+
+    container.appendChild(row);
   });
 }
 
@@ -155,6 +205,52 @@ function renderSiteList(container, sites, settingsKey, settings, toggleClass) {
   });
 }
 
+async function addCustomSite() {
+  const input = document.getElementById('customSiteInput');
+  const domain = normalizeDomain(input.value);
+
+  if (!domain) return;
+
+  if (!isValidDomain(domain)) {
+    input.classList.add('error');
+    setTimeout(() => input.classList.remove('error'), 500);
+    return;
+  }
+
+  const settings = await getSettings();
+  const currentCount = countBlockedSites(settings);
+
+  // Check paywall
+  if (!settings.isPremium && currentCount >= FREE_SITE_LIMIT) {
+    showUpgradeModal();
+    return;
+  }
+
+  // Check if already exists
+  const customSites = settings.customSites || [];
+  if (customSites.includes(domain)) {
+    input.value = '';
+    return;
+  }
+
+  // Check if it's a preset site
+  const presetDomains = SITES.map(s => s.domain);
+  if (presetDomains.some(d => domain.includes(d) || d.includes(domain))) {
+    input.classList.add('error');
+    setTimeout(() => input.classList.remove('error'), 500);
+    input.value = '';
+    return;
+  }
+
+  // Add the custom site
+  settings.customSites = [...customSites, domain];
+  await saveSettings(settings);
+  chrome.runtime.sendMessage({ type: 'settingsUpdated', settings });
+
+  input.value = '';
+  renderCustomSites(settings);
+}
+
 async function init() {
   const settings = await getSettings();
   const stats = await getStats();
@@ -164,6 +260,15 @@ async function init() {
   const hideModeList = document.getElementById('hideModeList');
   renderSiteList(siteList, SITES, 'blockedSites', settings, '');
   renderSiteList(hideModeList, SITES, 'hiddenElements', settings, 'toggle-hide');
+
+  // Render custom sites
+  renderCustomSites(settings);
+
+  // Add custom site handler
+  document.getElementById('addCustomSite').addEventListener('click', addCustomSite);
+  document.getElementById('customSiteInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addCustomSite();
+  });
 
   // Stats
   const todayKey = getTodayKey();

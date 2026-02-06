@@ -1,4 +1,4 @@
-// MuscleTick Background Service Worker
+// Lock in - Background Service Worker
 
 const BLOCKED_DOMAINS = [
   'instagram.com',
@@ -57,6 +57,7 @@ const DEFAULT_SETTINGS = {
     tiktok: false,
     reddit: false,
   },
+  customSites: [], // Array of custom blocked domains
 };
 
 // Initialize settings if not exists
@@ -82,6 +83,18 @@ chrome.runtime.onInstalled.addListener(async () => {
   }
 });
 
+// Check if hostname matches a custom site
+function matchesCustomSite(hostname, customSites) {
+  const cleanHostname = hostname.replace(/^www\./, '');
+  for (const customDomain of customSites) {
+    const cleanCustom = customDomain.replace(/^www\./, '');
+    if (cleanHostname === cleanCustom || cleanHostname.endsWith('.' + cleanCustom)) {
+      return customDomain;
+    }
+  }
+  return null;
+}
+
 // Handle navigation to blocked sites
 chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   // Only handle main frame navigation
@@ -91,7 +104,24 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
     const url = new URL(details.url);
     const hostname = url.hostname.toLowerCase();
 
-    // Find matching site key
+    const result = await chrome.storage.sync.get(['settings', 'temporaryAccess']);
+    const settings = result.settings || DEFAULT_SETTINGS;
+    const tempAccess = result.temporaryAccess || {};
+
+    // Check if focus mode is on
+    if (!settings.focusMode) return;
+
+    // Check temporary access first
+    const now = Date.now();
+    for (const domain of Object.keys(tempAccess)) {
+      if (hostname.includes(domain) || domain.includes(hostname.replace(/^www\./, ''))) {
+        if (tempAccess[domain] > now) {
+          return; // Access granted
+        }
+      }
+    }
+
+    // Check preset blocked sites
     let siteKey = DOMAIN_TO_KEY[hostname];
     if (!siteKey) {
       // Check partial matches
@@ -103,29 +133,26 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
       }
     }
 
-    if (!siteKey) return;
+    let shouldBlock = false;
 
-    const result = await chrome.storage.sync.get(['settings', 'temporaryAccess']);
-    const settings = result.settings || DEFAULT_SETTINGS;
-    const tempAccess = result.temporaryAccess || {};
-
-    // Check if focus mode is on and site is blocked
-    if (!settings.focusMode) return;
-    if (!settings.blockedSites || !settings.blockedSites[siteKey]) return;
-
-    // Check temporary access
-    const now = Date.now();
-    for (const domain of Object.keys(tempAccess)) {
-      if (hostname.includes(domain) && tempAccess[domain] > now) {
-        return; // Access granted
-      }
+    if (siteKey && settings.blockedSites && settings.blockedSites[siteKey]) {
+      shouldBlock = true;
     }
+
+    // Check custom sites
+    const customSites = settings.customSites || [];
+    const matchedCustomSite = matchesCustomSite(hostname, customSites);
+    if (matchedCustomSite) {
+      shouldBlock = true;
+    }
+
+    if (!shouldBlock) return;
 
     // Redirect to blocked page
     const blockedUrl = chrome.runtime.getURL('blocked.html') + '?url=' + encodeURIComponent(details.url);
     chrome.tabs.update(details.tabId, { url: blockedUrl });
   } catch (err) {
-    console.error('MuscleTick navigation error:', err);
+    console.error('Lock in navigation error:', err);
   }
 });
 
@@ -147,7 +174,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Grant 30 SECONDS access to the site (not 5 minutes)
     const url = message.url;
     try {
-      const hostname = new URL(url).hostname;
+      const hostname = new URL(url).hostname.replace(/^www\./, '');
       const expiryTime = Date.now() + 30 * 1000; // 30 seconds only!
 
       chrome.storage.sync.get(['temporaryAccess'], (result) => {
@@ -252,4 +279,4 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
-console.log('MuscleTick background service worker loaded');
+console.log('Lock in background service worker loaded');

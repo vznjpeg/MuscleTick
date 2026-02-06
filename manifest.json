@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "MuscleTick",
+  "name": "Lock in",
   "version": "1.0.0",
-  "description": "Block distracting sites & earn your scroll with pushups, squats, and more. Track time saved and stay focused.",
+  "description": "Lock in and focus. Block distracting sites & earn your scroll with pushups, squats, and more.",
   "permissions": [
     "storage",
     "tabs",

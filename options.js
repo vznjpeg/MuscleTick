@@ -275,11 +275,9 @@ async function init() {
   const upgradePremium = document.getElementById('upgradePremium');
   if (upgradePremium) {
     upgradePremium.addEventListener('click', async () => {
-      // In a real app, this would trigger payment flow
-      chrome.runtime.sendMessage({ type: 'upgradeToPremium' }, () => {
-        hideUpgradeModal();
-        location.reload();
-      });
+      // Open Stripe payment portal
+      window.open('https://buy.stripe.com/test_YOUR_STRIPE_PAYMENT_LINK', '_blank');
+      hideUpgradeModal();
     });
   }
 
