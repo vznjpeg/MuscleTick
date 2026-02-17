@@ -167,11 +167,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === 'grantTemporaryAccess') {
-    // Grant 30 SECONDS access to the site (not 5 minutes)
+    // Grant 60 SECONDS access to the site
     const url = message.url;
     try {
       const hostname = new URL(url).hostname.replace(/^www\./, '');
-      const expiryTime = Date.now() + 30 * 1000; // 30 seconds only!
+      const expiryTime = Date.now() + 60 * 1000; // 60 seconds
 
       chrome.storage.sync.get(['temporaryAccess'], (result) => {
         const tempAccess = result.temporaryAccess || {};

@@ -183,33 +183,24 @@ document.getElementById('rerollExercise').addEventListener('click', () => {
 });
 
 // Phase 3 buttons - Enter site
-document.getElementById('proceedBtn').addEventListener('click', async () => {
+document.getElementById('proceedBtn').addEventListener('click', () => {
   if (!exerciseCompleted) return;
 
-  // Grant temporary access and redirect
-  try {
-    await new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage({
-        type: 'grantTemporaryAccess',
-        url: blockedUrl,
-      }, (response) => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve(response);
-        }
-      });
-    });
+  // Disable button to prevent double clicks
+  const btn = document.getElementById('proceedBtn');
+  btn.disabled = true;
+  btn.textContent = 'REDIRECTING...';
 
+  // Grant temporary access and redirect
+  chrome.runtime.sendMessage({
+    type: 'grantTemporaryAccess',
+    url: blockedUrl,
+  }, (response) => {
     // Small delay to ensure storage is synced, then redirect
     setTimeout(() => {
       window.location.href = blockedUrl;
-    }, 100);
-  } catch (err) {
-    console.error('Error granting access:', err);
-    // Try redirecting anyway
-    window.location.href = blockedUrl;
-  }
+    }, 150);
+  });
 });
 
 document.getElementById('stayFocused').addEventListener('click', () => {
