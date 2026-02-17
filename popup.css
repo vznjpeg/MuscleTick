@@ -409,6 +409,113 @@ h2 {
   transform: scale(0.95);
 }
 
+/* Limit Notice */
+.limit-notice {
+  font-size: 11px;
+  color: var(--orange);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+/* Upgrade Modal */
+.upgrade-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.upgrade-content {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+  width: 100%;
+  text-align: center;
+  border: 1px solid rgba(233, 69, 96, 0.3);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.upgrade-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.upgrade-content h2 {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--text);
+  margin-bottom: 6px;
+  text-transform: lowercase;
+}
+
+.upgrade-content > p {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+}
+
+.upgrade-features {
+  list-style: none;
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.upgrade-features li {
+  font-size: 13px;
+  padding: 5px 0;
+  color: var(--text);
+}
+
+.btn-upgrade {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--accent), var(--orange));
+  border: none;
+  border-radius: var(--radius-sm);
+  color: white;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.btn-upgrade:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 20px rgba(233, 69, 96, 0.4);
+}
+
+.btn-close {
+  width: 100%;
+  padding: 10px;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-close:hover {
+  border-color: var(--text-dim);
+  color: var(--text);
+}
+
 .hidden {
   display: none !important;
 }

@@ -10,6 +10,9 @@ const SITES = [
   { id: 'reddit', name: 'Reddit', emoji: '\uD83E\uDD16', domain: 'reddit.com' },
 ];
 
+const FREE_SITE_LIMIT = 2;
+const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/test_YOUR_STRIPE_PAYMENT_LINK';
+
 const DEFAULT_SETTINGS = {
   focusMode: true,
   blockedSites: {
@@ -55,6 +58,14 @@ async function getStats() {
   });
 }
 
+async function isPremium() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['premium'], (result) => {
+      resolve(result.premium === true);
+    });
+  });
+}
+
 function formatTimeSaved(minutes) {
   if (minutes < 60) return `${Math.round(minutes)}m`;
   const h = Math.floor(minutes / 60);
@@ -79,7 +90,26 @@ function isValidDomain(domain) {
   return domainRegex.test(domain);
 }
 
-function renderCustomSites(settings) {
+function countBlockedSites(settings) {
+  let count = 0;
+  if (settings.blockedSites) {
+    for (const key of Object.keys(settings.blockedSites)) {
+      if (settings.blockedSites[key]) count++;
+    }
+  }
+  count += (settings.customSites || []).length;
+  return count;
+}
+
+function showUpgradeModal() {
+  document.getElementById('upgradeModal').classList.remove('hidden');
+}
+
+function hideUpgradeModal() {
+  document.getElementById('upgradeModal').classList.add('hidden');
+}
+
+function renderCustomSites(settings, premium) {
   const container = document.getElementById('customSitesList');
   container.innerHTML = '';
 
@@ -102,14 +132,22 @@ function renderCustomSites(settings) {
       current.customSites = (current.customSites || []).filter(d => d !== domain);
       await saveSettings(current);
       chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: current });
-      renderCustomSites(current);
+      renderCustomSites(current, premium);
     });
 
     container.appendChild(row);
   });
+
+  // Show/hide custom site input based on premium
+  const addCustomSection = document.querySelector('.add-custom-site');
+  if (!premium) {
+    addCustomSection.classList.add('hidden');
+  } else {
+    addCustomSection.classList.remove('hidden');
+  }
 }
 
-function renderSiteList(container, sites, settingsKey, settings, toggleClass) {
+function renderSiteList(container, sites, settingsKey, settings, toggleClass, premium) {
   container.innerHTML = '';
 
   sites.forEach((site) => {
@@ -131,6 +169,16 @@ function renderSiteList(container, sites, settingsKey, settings, toggleClass) {
 
     const checkbox = row.querySelector('input');
     checkbox.addEventListener('change', async () => {
+      // Check free limit for blockedSites
+      if (settingsKey === 'blockedSites' && checkbox.checked && !premium) {
+        const current = await getSettings();
+        if (countBlockedSites(current) >= FREE_SITE_LIMIT) {
+          checkbox.checked = false;
+          showUpgradeModal();
+          return;
+        }
+      }
+
       const current = await getSettings();
       current[settingsKey][site.id] = checkbox.checked;
       await saveSettings(current);
@@ -141,7 +189,12 @@ function renderSiteList(container, sites, settingsKey, settings, toggleClass) {
   });
 }
 
-async function addCustomSite() {
+async function addCustomSite(premium) {
+  if (!premium) {
+    showUpgradeModal();
+    return;
+  }
+
   const input = document.getElementById('customSiteInput');
   const domain = normalizeDomain(input.value);
 
@@ -177,26 +230,37 @@ async function addCustomSite() {
   chrome.runtime.sendMessage({ type: 'settingsUpdated', settings });
 
   input.value = '';
-  renderCustomSites(settings);
+  renderCustomSites(settings, premium);
 }
 
 async function init() {
   const settings = await getSettings();
   const stats = await getStats();
+  const premium = await isPremium();
 
   // Render site lists
   const siteList = document.getElementById('siteList');
   const hideModeList = document.getElementById('hideModeList');
-  renderSiteList(siteList, SITES, 'blockedSites', settings, '');
-  renderSiteList(hideModeList, SITES, 'hiddenElements', settings, 'toggle-hide');
+  renderSiteList(siteList, SITES, 'blockedSites', settings, '', premium);
+  renderSiteList(hideModeList, SITES, 'hiddenElements', settings, 'toggle-hide', premium);
 
   // Render custom sites
-  renderCustomSites(settings);
+  renderCustomSites(settings, premium);
+
+  // Show limit notice for free users
+  const limitNotice = document.getElementById('limitNotice');
+  if (!premium && limitNotice) {
+    const currentCount = countBlockedSites(settings);
+    limitNotice.textContent = `${currentCount}/${FREE_SITE_LIMIT} free sites used`;
+    limitNotice.classList.remove('hidden');
+  } else if (limitNotice) {
+    limitNotice.classList.add('hidden');
+  }
 
   // Add custom site handler
-  document.getElementById('addCustomSite').addEventListener('click', addCustomSite);
+  document.getElementById('addCustomSite').addEventListener('click', () => addCustomSite(premium));
   document.getElementById('customSiteInput').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') addCustomSite();
+    if (e.key === 'Enter') addCustomSite(premium);
   });
 
   // Stats
@@ -221,6 +285,12 @@ async function init() {
     updateMasterButton(masterBtn, current.focusMode);
     chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: current });
   });
+
+  // Upgrade modal handlers
+  document.getElementById('upgradeBtn').addEventListener('click', () => {
+    chrome.tabs.create({ url: STRIPE_PAYMENT_LINK });
+  });
+  document.getElementById('closeUpgrade').addEventListener('click', hideUpgradeModal);
 
   // Bottom links
   document.getElementById('openStats').addEventListener('click', () => {

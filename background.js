@@ -200,6 +200,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === 'checkPremium') {
+    chrome.storage.sync.get(['premium'], (result) => {
+      sendResponse({ premium: result.premium === true });
+    });
+    return true;
+  }
+
+  if (message.type === 'upgradeToPremium') {
+    chrome.storage.sync.set({ premium: true }, () => {
+      sendResponse({ success: true });
+    });
+    return true;
+  }
+
   return false;
 });
 

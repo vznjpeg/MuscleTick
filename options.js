@@ -25,6 +25,8 @@ const EXERCISES = [
   { id: 'calfraises', name: '15 Calf Raises', emoji: '\uD83E\uDDB6' },
 ];
 
+const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/test_YOUR_STRIPE_PAYMENT_LINK';
+
 const DEFAULT_SETTINGS = {
   focusMode: true,
   blockedSites: {
@@ -62,6 +64,14 @@ async function getSettings() {
 async function saveSettings(settings) {
   return new Promise((resolve) => {
     chrome.storage.sync.set({ settings }, resolve);
+  });
+}
+
+async function isPremium() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['premium'], (result) => {
+      resolve(result.premium === true);
+    });
   });
 }
 
@@ -154,18 +164,48 @@ function renderExerciseGrid(settings) {
 
 async function init() {
   const settings = await getSettings();
+  const premium = await isPremium();
+
+  // Premium banner
+  const premiumBanner = document.getElementById('premiumBanner');
+  const premiumBadge = document.getElementById('premiumBadge');
+  if (premium) {
+    if (premiumBanner) premiumBanner.classList.add('hidden');
+    if (premiumBadge) premiumBadge.classList.remove('hidden');
+  } else {
+    if (premiumBanner) premiumBanner.classList.remove('hidden');
+    if (premiumBadge) premiumBadge.classList.add('hidden');
+  }
+
+  // Upgrade button in banner
+  const upgradeBannerBtn = document.getElementById('upgradeBannerBtn');
+  if (upgradeBannerBtn) {
+    upgradeBannerBtn.addEventListener('click', () => {
+      chrome.tabs.create({ url: STRIPE_PAYMENT_LINK });
+    });
+  }
 
   // Render site lists
   renderSiteList('blockedSitesList', SITES, 'blockedSites', settings);
   renderSiteList('hiddenSitesList', SITES, 'hiddenElements', settings, 'toggle-hide');
 
-  // Timer settings
+  // Premium-gated sections
+  const premiumSections = document.querySelectorAll('.premium-section');
+  premiumSections.forEach((section) => {
+    if (!premium) {
+      section.classList.add('locked');
+    }
+  });
+
+  // Timer settings (premium only)
   const baseTimer = document.getElementById('baseTimer');
   const penaltyIncrement = document.getElementById('penaltyIncrement');
 
   if (baseTimer) {
     baseTimer.value = settings.baseTimer || 30;
+    baseTimer.disabled = !premium;
     baseTimer.addEventListener('change', async () => {
+      if (!premium) return;
       const current = await getSettings();
       current.baseTimer = parseInt(baseTimer.value);
       await saveSettings(current);
@@ -175,7 +215,9 @@ async function init() {
 
   if (penaltyIncrement) {
     penaltyIncrement.value = settings.penaltyIncrement || 30;
+    penaltyIncrement.disabled = !premium;
     penaltyIncrement.addEventListener('change', async () => {
+      if (!premium) return;
       const current = await getSettings();
       current.penaltyIncrement = parseInt(penaltyIncrement.value);
       await saveSettings(current);
@@ -183,13 +225,22 @@ async function init() {
     });
   }
 
-  // Exercise grid
-  renderExerciseGrid(settings);
+  // Exercise grid (premium only)
+  if (premium) {
+    renderExerciseGrid(settings);
+  } else {
+    const exerciseGrid = document.getElementById('exerciseGrid');
+    if (exerciseGrid) {
+      exerciseGrid.innerHTML = '<p class="locked-msg">upgrade to premium to customize exercises</p>';
+    }
+  }
 
-  // Export data
+  // Export data (premium only)
   const exportBtn = document.getElementById('exportData');
   if (exportBtn) {
+    exportBtn.disabled = !premium;
     exportBtn.addEventListener('click', async () => {
+      if (!premium) return;
       const result = await chrome.storage.sync.get(['settings', 'stats']);
       const dataStr = JSON.stringify(result, null, 2);
       const blob = new Blob([dataStr], { type: 'application/json' });
@@ -202,7 +253,7 @@ async function init() {
     });
   }
 
-  // Reset stats
+  // Reset stats (always available)
   const resetBtn = document.getElementById('resetStats');
   if (resetBtn) {
     resetBtn.addEventListener('click', async () => {
