@@ -33,12 +33,8 @@ const DOMAIN_TO_KEY = {
   'new.reddit.com': 'reddit',
 };
 
-// Free tier: only 2 sites can be blocked
-const FREE_SITE_LIMIT = 2;
-
 const DEFAULT_SETTINGS = {
   focusMode: true,
-  isPremium: false,
   blockedSites: {
     instagram: true,
     facebook: true,
@@ -200,26 +196,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'getSettings') {
     chrome.storage.sync.get(['settings'], (result) => {
       sendResponse(result.settings || DEFAULT_SETTINGS);
-    });
-    return true;
-  }
-
-  if (message.type === 'checkPremium') {
-    chrome.storage.sync.get(['settings'], (result) => {
-      const settings = result.settings || DEFAULT_SETTINGS;
-      sendResponse({ isPremium: settings.isPremium || false });
-    });
-    return true;
-  }
-
-  if (message.type === 'upgradeToPremium') {
-    // In a real app, this would verify payment
-    chrome.storage.sync.get(['settings'], (result) => {
-      const settings = result.settings || DEFAULT_SETTINGS;
-      settings.isPremium = true;
-      chrome.storage.sync.set({ settings }, () => {
-        sendResponse({ success: true });
-      });
     });
     return true;
   }

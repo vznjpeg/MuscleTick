@@ -1,4 +1,4 @@
-// MuscleTick Popup Controller
+// Lock in Popup Controller
 
 const SITES = [
   { id: 'instagram', name: 'Instagram', emoji: '\uD83D\uDCF7', domain: 'instagram.com' },
@@ -10,11 +10,8 @@ const SITES = [
   { id: 'reddit', name: 'Reddit', emoji: '\uD83E\uDD16', domain: 'reddit.com' },
 ];
 
-const FREE_SITE_LIMIT = 2;
-
 const DEFAULT_SETTINGS = {
   focusMode: true,
-  isPremium: false,
   blockedSites: {
     instagram: true,
     facebook: true,
@@ -33,7 +30,7 @@ const DEFAULT_SETTINGS = {
     tiktok: false,
     reddit: false,
   },
-  customSites: [], // Array of custom blocked domains
+  customSites: [],
 };
 
 async function getSettings() {
@@ -69,63 +66,15 @@ function getTodayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function countBlockedSites(settings) {
-  let count = 0;
-  // Count preset blocked sites
-  for (const siteId of Object.keys(settings.blockedSites || {})) {
-    if (settings.blockedSites[siteId]) count++;
-  }
-  // Count custom sites
-  count += (settings.customSites || []).length;
-  return count;
-}
-
-function showUpgradeModal() {
-  // Create modal
-  const modal = document.createElement('div');
-  modal.className = 'upgrade-modal';
-  modal.innerHTML = `
-    <div class="upgrade-content">
-      <div class="upgrade-icon">&#x1F4AA;</div>
-      <h2>upgrade to premium</h2>
-      <p>free users can only block 2 sites</p>
-      <ul class="upgrade-features">
-        <li>&#x2705; Block unlimited sites</li>
-        <li>&#x2705; Add custom websites</li>
-        <li>&#x2705; Custom timer settings</li>
-        <li>&#x2705; Export your data</li>
-        <li>&#x2705; Choose your exercises</li>
-      </ul>
-      <button class="btn-upgrade" id="upgradePremium">UPGRADE - $4.99</button>
-      <button class="btn-close" id="closeModal">maybe later</button>
-    </div>
-  `;
-  document.body.appendChild(modal);
-
-  document.getElementById('closeModal').addEventListener('click', () => {
-    modal.remove();
-  });
-
-  document.getElementById('upgradePremium').addEventListener('click', async () => {
-    // Open Stripe payment portal
-    window.open('https://buy.stripe.com/test_YOUR_STRIPE_PAYMENT_LINK', '_blank');
-    modal.remove();
-  });
-}
-
 function normalizeDomain(input) {
   let domain = input.trim().toLowerCase();
-  // Remove protocol if present
   domain = domain.replace(/^(https?:\/\/)?(www\.)?/, '');
-  // Remove path if present
   domain = domain.split('/')[0];
-  // Remove any remaining whitespace
   domain = domain.trim();
   return domain;
 }
 
 function isValidDomain(domain) {
-  // Basic domain validation
   const domainRegex = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}$/i;
   return domainRegex.test(domain);
 }
@@ -162,8 +111,6 @@ function renderCustomSites(settings) {
 
 function renderSiteList(container, sites, settingsKey, settings, toggleClass) {
   container.innerHTML = '';
-  const isPremium = settings.isPremium || false;
-  const blockedCount = countBlockedSites(settings);
 
   sites.forEach((site) => {
     const row = document.createElement('div');
@@ -185,17 +132,6 @@ function renderSiteList(container, sites, settingsKey, settings, toggleClass) {
     const checkbox = row.querySelector('input');
     checkbox.addEventListener('change', async () => {
       const current = await getSettings();
-      const currentCount = countBlockedSites(current);
-
-      // Check paywall for blocked sites only (not hide mode)
-      if (settingsKey === 'blockedSites' && checkbox.checked && !current.isPremium) {
-        if (currentCount >= FREE_SITE_LIMIT) {
-          checkbox.checked = false;
-          showUpgradeModal();
-          return;
-        }
-      }
-
       current[settingsKey][site.id] = checkbox.checked;
       await saveSettings(current);
       chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: current });
@@ -218,13 +154,6 @@ async function addCustomSite() {
   }
 
   const settings = await getSettings();
-  const currentCount = countBlockedSites(settings);
-
-  // Check paywall
-  if (!settings.isPremium && currentCount >= FREE_SITE_LIMIT) {
-    showUpgradeModal();
-    return;
-  }
 
   // Check if already exists
   const customSites = settings.customSites || [];
