@@ -1,4 +1,4 @@
-// Lock in - Background Service Worker
+// Muscle Memory - Background Service Worker
 
 const BLOCKED_DOMAINS = [
   'instagram.com',
@@ -148,7 +148,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
     const blockedUrl = chrome.runtime.getURL('blocked.html') + '?url=' + encodeURIComponent(details.url);
     chrome.tabs.update(details.tabId, { url: blockedUrl });
   } catch (err) {
-    console.error('Lock in navigation error:', err);
+    console.error('Muscle Memory navigation error:', err);
   }
 });
 
@@ -269,4 +269,4 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
-console.log('Lock in background service worker loaded');
+console.log('Muscle Memory background service worker loaded');

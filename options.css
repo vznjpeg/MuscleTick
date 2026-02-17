@@ -344,6 +344,72 @@ h2 {
   transform: translateX(-50%) translateY(0);
 }
 
+/* Feature Request Button */
+.btn-feature {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, var(--accent), var(--orange));
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-feature:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
+}
+
+/* Support Section */
+.support-content {
+  margin-top: 8px;
+}
+
+.support-heading {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.support-sub {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 12px;
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+.support-sub strong {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.support-steps {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+}
+
+.support-steps li {
+  font-size: 13px;
+  color: var(--text);
+  padding: 6px 0 6px 20px;
+  position: relative;
+  line-height: 1.4;
+}
+
+.support-steps li::before {
+  content: '\2022';
+  position: absolute;
+  left: 6px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
 /* Footer */
 footer {
   text-align: center;

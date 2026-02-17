@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Lock in",
+  "name": "Muscle Memory",
   "version": "1.0.0",
-  "description": "Lock in and focus. Block distracting sites & earn your scroll with pushups, squats, and more.",
+  "description": "Muscle Memory - Block distracting sites & earn your scroll with pushups, squats, and more.",
   "permissions": [
     "storage",
     "tabs",

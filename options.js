@@ -1,4 +1,4 @@
-// Lock in Options Page
+// Muscle Memory Options Page
 
 const SITES = [
   { id: 'instagram', name: 'Instagram', emoji: '\uD83D\uDCF7' },
@@ -247,9 +247,17 @@ async function init() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'lockin-data.json';
+      a.download = 'musclememory-data.json';
       a.click();
       URL.revokeObjectURL(url);
+    });
+  }
+
+  // Request a feature
+  const featureBtn = document.getElementById('requestFeature');
+  if (featureBtn) {
+    featureBtn.addEventListener('click', () => {
+      chrome.tabs.create({ url: 'https://forms.gle/ZxMmUz2usNUVuJvS7' });
     });
   }
 

@@ -1,4 +1,4 @@
-// Lock in Popup Controller
+// Muscle Memory Popup Controller
 
 const SITES = [
   { id: 'instagram', name: 'Instagram', emoji: '\uD83D\uDCF7', domain: 'instagram.com' },
