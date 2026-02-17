@@ -7,8 +7,7 @@
     "storage",
     "tabs",
     "webNavigation",
-    "alarms",
-    "declarativeNetRequest"
+    "alarms"
   ],
   "host_permissions": [
     "*://*.instagram.com/*",
