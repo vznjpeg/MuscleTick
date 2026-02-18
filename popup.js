@@ -320,18 +320,6 @@ async function init() {
   const streak = stats.streak || 0;
   document.getElementById('streakText').textContent = `${streak} day streak`;
 
-  // Master toggle
-  const masterBtn = document.getElementById('masterToggle');
-  updateMasterButton(masterBtn, settings.focusMode);
-
-  masterBtn.addEventListener('click', async () => {
-    const current = await getSettings();
-    current.focusMode = !current.focusMode;
-    await saveSettings(current);
-    updateMasterButton(masterBtn, current.focusMode);
-    chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: current });
-  });
-
   // Bottom links
   document.getElementById('openStats').addEventListener('click', () => {
     chrome.tabs.create({ url: chrome.runtime.getURL('stats.html') });
@@ -462,17 +450,6 @@ function showSetupOverlay(settings) {
     // Reload popup with locked state
     init();
   };
-}
-
-function updateMasterButton(btn, isOn) {
-  const textEl = btn.querySelector('.btn-text');
-  if (isOn) {
-    textEl.textContent = 'FOCUS MODE ON';
-    btn.classList.remove('off');
-  } else {
-    textEl.textContent = 'FOCUS MODE OFF';
-    btn.classList.add('off');
-  }
 }
 
 document.addEventListener('DOMContentLoaded', init);
