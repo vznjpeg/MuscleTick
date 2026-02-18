@@ -155,7 +155,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   }
 });
 
-// Enforce 24hr lock: reject settings changes that loosen restrictions while locked
+// Enforce 6hr lock: reject settings changes that loosen restrictions while locked
 async function enforceSettingsLock(newSettings) {
   return new Promise((resolve) => {
     chrome.storage.sync.get(['settingsLockUntil', 'settings'], (result) => {
@@ -246,6 +246,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     chrome.storage.sync.get(['settings'], (result) => {
       sendResponse(result.settings || DEFAULT_SETTINGS);
     });
+    return true;
+  }
+
+  if (message.type === 'getTempAccessExpiry') {
+    const hostname = message.hostname.replace(/^www\./, '');
+    const now = Date.now();
+
+    // Check in-memory map for temp access
+    for (const [domain, expiry] of Object.entries(tempAccessMap)) {
+      if (expiry > now && (hostname === domain || hostname.endsWith('.' + domain) || domain.endsWith('.' + hostname))) {
+        sendResponse({ hasAccess: true, expiryTime: expiry });
+        return true;
+      }
+    }
+
+    sendResponse({ hasAccess: false, expiryTime: 0 });
     return true;
   }
 

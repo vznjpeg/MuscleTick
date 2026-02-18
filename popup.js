@@ -24,7 +24,7 @@ const DEFAULT_SETTINGS = {
   customSites: [],
 };
 
-const LOCK_DURATION = 24 * 60 * 60 * 1000; // 24 hours in ms
+const LOCK_DURATION = 6 * 60 * 60 * 1000; // 6 hours in ms
 
 async function getSettings() {
   return new Promise((resolve) => {
@@ -136,7 +136,7 @@ function renderCustomSites(settings, locked) {
         const current = await getSettings();
         current.customSites = (current.customSites || []).filter(d => d !== domain);
         await saveSettings(current);
-        // Removing a site = loosening restriction, re-lock for 24hrs
+        // Removing a site = loosening restriction, re-lock for 6hrs
         const lockUntil = await setLock();
         chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: current });
         renderCustomSites(current, isLocked(lockUntil));
@@ -180,7 +180,7 @@ function renderSiteList(container, sites, settingsKey, settings, locked) {
       await saveSettings(current);
       chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: current });
 
-      // If turning OFF a site (loosening restriction), re-lock for 24hrs
+      // If turning OFF a site (loosening restriction), re-lock for 6hrs
       if (wasChecked && !checkbox.checked) {
         const lockUntil = await setLock();
         // Re-render everything with new lock state
@@ -429,7 +429,7 @@ function showSetupOverlay(settings) {
       lockInBtn.textContent = 'SELECT AT LEAST ONE SITE';
       lockInBtn.style.background = 'linear-gradient(135deg, #333, #555)';
       setTimeout(() => {
-        lockInBtn.textContent = 'LOCK IN FOR 24 HOURS';
+        lockInBtn.textContent = 'LOCK IN FOR 6 HOURS';
         lockInBtn.style.background = '';
       }, 2000);
       return;
