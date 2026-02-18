@@ -7,7 +7,45 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="container">
+  <!-- SETUP OVERLAY (first-time only) -->
+  <div class="setup-overlay hidden" id="setupOverlay">
+    <div class="setup-container">
+      <header>
+        <div class="logo-row">
+          <img src="icons/icon48.png" alt="Dopamine Detox" class="logo">
+          <h1>Dopamine Detox</h1>
+        </div>
+        <p class="tagline">initial setup</p>
+      </header>
+
+      <div class="setup-warning">
+        &#x26A0;&#xFE0F; these settings will be <strong>locked for 24 hours</strong>. you won't be able to unblock sites until the timer expires. choose wisely.
+      </div>
+
+      <section class="sites-section">
+        <h2>choose sites to block</h2>
+        <div class="site-list" id="setupSiteList">
+          <!-- Sites injected by JS -->
+        </div>
+
+        <div class="custom-sites-list" id="setupCustomList">
+          <!-- Custom sites injected by JS -->
+        </div>
+
+        <div class="add-custom-site">
+          <input type="text" id="setupCustomInput" placeholder="enter website (e.g. netflix.com)" />
+          <button class="btn-add" id="setupAddCustomSite">+</button>
+        </div>
+      </section>
+
+      <button class="btn-lock-in" id="lockInBtn">
+        &#x1F512; LOCK IN FOR 24 HOURS
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT (shown after setup) -->
+  <div class="container" id="mainContent">
     <header>
       <div class="logo-row">
         <img src="icons/icon48.png" alt="Dopamine Detox" class="logo">
@@ -15,6 +53,11 @@
       </div>
       <p class="tagline">focus mode activated</p>
     </header>
+
+    <!-- Lock Banner -->
+    <div class="lock-banner hidden" id="lockBanner">
+      &#x1F512; settings locked &middot; 24h remaining
+    </div>
 
     <div class="stats-banner" id="statsBanner">
       <div class="stat-item">

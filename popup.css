@@ -407,3 +407,99 @@ h2 {
 .hidden {
   display: none !important;
 }
+
+/* Setup Overlay */
+.setup-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.setup-container {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.setup-warning {
+  background: rgba(255, 214, 0, 0.1);
+  border: 1px solid rgba(255, 214, 0, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--yellow);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.setup-warning strong {
+  color: #fff;
+}
+
+.btn-lock-in {
+  width: 100%;
+  padding: 18px;
+  border: none;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--accent), #c62828);
+  color: white;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 20px rgba(233, 69, 96, 0.3);
+  transition: all 0.2s;
+}
+
+.btn-lock-in:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 25px rgba(233, 69, 96, 0.5);
+}
+
+.btn-lock-in:active {
+  transform: scale(0.98);
+}
+
+/* Lock Banner */
+.lock-banner {
+  background: rgba(255, 214, 0, 0.1);
+  border: 1px solid rgba(255, 214, 0, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--yellow);
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+/* Toggle Lock State */
+.toggle-locked {
+  opacity: 0.6;
+  cursor: not-allowed;
+  position: relative;
+}
+
+.toggle-locked input {
+  cursor: not-allowed;
+}
+
+.toggle-lock-icon {
+  position: absolute;
+  right: -22px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+}
+
+/* Lock icon on custom site rows */
+.lock-icon {
+  font-size: 14px;
+  opacity: 0.5;
+  padding: 4px 8px;
+}

@@ -155,17 +155,61 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
   }
 });
 
+// Enforce 24hr lock: reject settings changes that loosen restrictions while locked
+async function enforceSettingsLock(newSettings) {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['settingsLockUntil', 'settings'], (result) => {
+      const lockUntil = result.settingsLockUntil || 0;
+      if (lockUntil <= Date.now()) {
+        // Not locked, allow any change
+        resolve(newSettings);
+        return;
+      }
+
+      // Locked: prevent loosening restrictions
+      const oldSettings = result.settings || DEFAULT_SETTINGS;
+      const enforced = { ...newSettings };
+
+      // Prevent turning OFF any site that was ON
+      if (oldSettings.blockedSites && enforced.blockedSites) {
+        for (const [key, wasBlocked] of Object.entries(oldSettings.blockedSites)) {
+          if (wasBlocked && !enforced.blockedSites[key]) {
+            enforced.blockedSites[key] = true; // Force it back ON
+          }
+        }
+      }
+
+      // Prevent removing custom sites that were there
+      const oldCustom = oldSettings.customSites || [];
+      const newCustom = enforced.customSites || [];
+      const missing = oldCustom.filter(d => !newCustom.includes(d));
+      if (missing.length > 0) {
+        enforced.customSites = [...newCustom, ...missing];
+      }
+
+      resolve(enforced);
+    });
+  });
+}
+
 // Handle messages from popup and content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'settingsUpdated') {
-    chrome.tabs.query({}, (tabs) => {
-      tabs.forEach((tab) => {
-        if (tab.id) {
-          chrome.tabs.sendMessage(tab.id, { type: 'settingsUpdated', settings: message.settings }).catch(() => {});
-        }
+    // Enforce lock before propagating
+    enforceSettingsLock(message.settings).then((enforcedSettings) => {
+      // Save the enforced settings
+      chrome.storage.sync.set({ settings: enforcedSettings }, () => {
+        chrome.tabs.query({}, (tabs) => {
+          tabs.forEach((tab) => {
+            if (tab.id) {
+              chrome.tabs.sendMessage(tab.id, { type: 'settingsUpdated', settings: enforcedSettings }).catch(() => {});
+            }
+          });
+        });
+        sendResponse({ success: true });
       });
     });
-    sendResponse({ success: true });
+    return true; // async response
   }
 
   if (message.type === 'grantTemporaryAccess') {
