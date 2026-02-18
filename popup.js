@@ -26,6 +26,11 @@ const DEFAULT_SETTINGS = {
 
 const LOCK_DURATION = 6 * 60 * 60 * 1000; // 6 hours in ms
 
+// Pending changes tracking
+let savedSettings = null;
+let pendingSettings = null;
+let hasPendingChanges = false;
+
 async function getSettings() {
   return new Promise((resolve) => {
     chrome.storage.sync.get(['settings'], (result) => {
@@ -115,6 +120,55 @@ function showSaveToast() {
   }, 1500);
 }
 
+function checkForPendingChanges() {
+  if (!savedSettings || !pendingSettings) {
+    hasPendingChanges = false;
+    updateConfirmButton();
+    return;
+  }
+
+  // Check if blocked sites differ (only for turning ON, not OFF)
+  let hasNewBlocks = false;
+  for (const site of SITES) {
+    if (pendingSettings.blockedSites[site.id] && !savedSettings.blockedSites[site.id]) {
+      hasNewBlocks = true;
+      break;
+    }
+  }
+
+  // Check if custom sites were added
+  const savedCustom = savedSettings.customSites || [];
+  const pendingCustom = pendingSettings.customSites || [];
+  const hasNewCustom = pendingCustom.some(d => !savedCustom.includes(d));
+
+  hasPendingChanges = hasNewBlocks || hasNewCustom;
+  updateConfirmButton();
+}
+
+function updateConfirmButton() {
+  const confirmBtn = document.getElementById('confirmChangesBtn');
+  if (!confirmBtn) return;
+
+  if (hasPendingChanges) {
+    confirmBtn.classList.remove('hidden');
+  } else {
+    confirmBtn.classList.add('hidden');
+  }
+}
+
+async function confirmPendingChanges() {
+  if (!hasPendingChanges || !pendingSettings) return;
+
+  await saveSettings(pendingSettings);
+  chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: pendingSettings });
+  showSaveToast();
+
+  // Update saved settings
+  savedSettings = JSON.parse(JSON.stringify(pendingSettings));
+  hasPendingChanges = false;
+  updateConfirmButton();
+}
+
 function renderCustomSites(settings, locked) {
   const container = document.getElementById('customSitesList');
   container.innerHTML = '';
@@ -125,7 +179,10 @@ function renderCustomSites(settings, locked) {
     const row = document.createElement('div');
     row.className = 'site-row custom-site-row';
 
-    if (locked) {
+    // Check if this is a pending (unsaved) custom site
+    const isPending = savedSettings && !savedSettings.customSites.includes(domain);
+
+    if (locked && !isPending) {
       row.innerHTML = `
         <div class="site-info">
           <span class="site-emoji">&#x1F310;</span>
@@ -133,6 +190,22 @@ function renderCustomSites(settings, locked) {
         </div>
         <span class="lock-icon">&#x1F512;</span>
       `;
+    } else if (isPending) {
+      row.innerHTML = `
+        <div class="site-info">
+          <span class="site-emoji">&#x1F310;</span>
+          <span class="site-name">${domain}</span>
+          <span class="pending-badge">new</span>
+        </div>
+        <button class="btn-remove" data-domain="${domain}">&#x2715;</button>
+      `;
+
+      const removeBtn = row.querySelector('.btn-remove');
+      removeBtn.addEventListener('click', () => {
+        pendingSettings.customSites = pendingSettings.customSites.filter(d => d !== domain);
+        renderCustomSites(pendingSettings, locked);
+        checkForPendingChanges();
+      });
     } else {
       row.innerHTML = `
         <div class="site-info">
@@ -151,9 +224,13 @@ function renderCustomSites(settings, locked) {
         const lockUntil = await setLock();
         chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: current });
         showSaveToast();
+
+        // Update both saved and pending
+        savedSettings = JSON.parse(JSON.stringify(current));
+        pendingSettings = JSON.parse(JSON.stringify(current));
+
         renderCustomSites(current, isLocked(lockUntil));
         updateLockBanner(lockUntil);
-        // Re-render site list too since lock state changed
         const siteList = document.getElementById('siteList');
         renderSiteList(siteList, SITES, 'blockedSites', current, isLocked(lockUntil));
       });
@@ -171,35 +248,43 @@ function renderSiteList(container, sites, settingsKey, settings, locked) {
     row.className = 'site-row';
 
     const isChecked = settings[settingsKey] && settings[settingsKey][site.id];
+    const wasSaved = savedSettings && savedSettings[settingsKey] && savedSettings[settingsKey][site.id];
+    const isPending = isChecked && !wasSaved;
 
     row.innerHTML = `
       <div class="site-info">
         <span class="site-emoji">${site.emoji}</span>
         <span class="site-name">${site.name}</span>
+        ${isPending ? '<span class="pending-badge">new</span>' : ''}
       </div>
-      <label class="toggle ${locked && isChecked ? 'toggle-locked' : ''}">
-        <input type="checkbox" data-site="${site.id}" data-key="${settingsKey}" ${isChecked ? 'checked' : ''} ${locked && isChecked ? 'disabled' : ''}>
+      <label class="toggle ${locked && wasSaved ? 'toggle-locked' : ''}">
+        <input type="checkbox" data-site="${site.id}" data-key="${settingsKey}" ${isChecked ? 'checked' : ''} ${locked && wasSaved ? 'disabled' : ''}>
         <span class="toggle-slider"></span>
-        ${locked && isChecked ? '<span class="toggle-lock-icon">&#x1F512;</span>' : ''}
+        ${locked && wasSaved ? '<span class="toggle-lock-icon">&#x1F512;</span>' : ''}
       </label>
     `;
 
     const checkbox = row.querySelector('input');
     checkbox.addEventListener('change', async () => {
-      const current = await getSettings();
-      const wasChecked = current[settingsKey][site.id];
-      current[settingsKey][site.id] = checkbox.checked;
-      await saveSettings(current);
-      chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: current });
-      showSaveToast();
+      const wasChecked = pendingSettings[settingsKey][site.id];
+      pendingSettings[settingsKey][site.id] = checkbox.checked;
 
-      // If turning OFF a site (loosening restriction), re-lock for 6hrs
-      if (wasChecked && !checkbox.checked) {
+      // If turning OFF a site that was already saved (loosening restriction)
+      if (wasChecked && !checkbox.checked && savedSettings[settingsKey][site.id]) {
+        // This is immediate - save right away and re-lock
+        await saveSettings(pendingSettings);
         const lockUntil = await setLock();
-        // Re-render everything with new lock state
-        renderSiteList(container, sites, settingsKey, current, isLocked(lockUntil));
-        renderCustomSites(current, isLocked(lockUntil));
+        chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: pendingSettings });
+        showSaveToast();
+
+        savedSettings = JSON.parse(JSON.stringify(pendingSettings));
+        renderSiteList(container, sites, settingsKey, pendingSettings, isLocked(lockUntil));
+        renderCustomSites(pendingSettings, isLocked(lockUntil));
         updateLockBanner(lockUntil);
+      } else {
+        // Turning ON or turning OFF a pending change - just update UI
+        renderSiteList(container, sites, settingsKey, pendingSettings, locked);
+        checkForPendingChanges();
       }
     });
 
@@ -219,9 +304,7 @@ async function addCustomSite(locked) {
     return;
   }
 
-  const settings = await getSettings();
-
-  const customSites = settings.customSites || [];
+  const customSites = pendingSettings.customSites || [];
   if (customSites.includes(domain)) {
     input.value = '';
     return;
@@ -235,13 +318,10 @@ async function addCustomSite(locked) {
     return;
   }
 
-  settings.customSites = [...customSites, domain];
-  await saveSettings(settings);
-  chrome.runtime.sendMessage({ type: 'settingsUpdated', settings });
-  showSaveToast();
-
+  pendingSettings.customSites = [...customSites, domain];
   input.value = '';
-  renderCustomSites(settings, locked);
+  renderCustomSites(pendingSettings, locked);
+  checkForPendingChanges();
 }
 
 function updateLockBanner(lockUntil) {
@@ -264,12 +344,11 @@ function startCountdownTimer(lockUntil) {
   countdownInterval = setInterval(() => {
     if (!isLocked(lockUntil)) {
       clearInterval(countdownInterval);
-      // Lock expired, refresh UI
       init();
       return;
     }
     updateLockBanner(lockUntil);
-  }, 60000); // Update every minute
+  }, 60000);
 }
 
 async function init() {
@@ -278,36 +357,41 @@ async function init() {
   const lockState = await getLockState();
   const locked = isLocked(lockState.lockUntil);
 
-  // Check if this is first-time setup
+  // Initialize saved and pending settings
+  savedSettings = JSON.parse(JSON.stringify(settings));
+  pendingSettings = JSON.parse(JSON.stringify(settings));
+  hasPendingChanges = false;
+
   if (!lockState.setupComplete) {
     showSetupOverlay(settings);
     return;
   }
 
-  // Hide setup overlay if visible
   const setupOverlay = document.getElementById('setupOverlay');
   if (setupOverlay) setupOverlay.classList.add('hidden');
 
-  // Show main content
   const mainContent = document.getElementById('mainContent');
   if (mainContent) mainContent.classList.remove('hidden');
 
-  // Lock banner
   updateLockBanner(lockState.lockUntil);
   if (locked) startCountdownTimer(lockState.lockUntil);
 
-  // Render site list
   const siteList = document.getElementById('siteList');
   renderSiteList(siteList, SITES, 'blockedSites', settings, locked);
 
-  // Render custom sites
   renderCustomSites(settings, locked);
 
-  // Add custom site handler (adding is always allowed)
   document.getElementById('addCustomSite').onclick = () => addCustomSite(locked);
   document.getElementById('customSiteInput').onkeydown = (e) => {
     if (e.key === 'Enter') addCustomSite(locked);
   };
+
+  // Confirm button
+  const confirmBtn = document.getElementById('confirmChangesBtn');
+  if (confirmBtn) {
+    confirmBtn.onclick = confirmPendingChanges;
+  }
+  updateConfirmButton();
 
   // Stats
   const todayKey = getTodayKey();
@@ -316,11 +400,9 @@ async function init() {
   document.getElementById('blocksToday').textContent = todayBlocks;
   document.getElementById('exercisesDone').textContent = stats.exercisesDone || 0;
 
-  // Streak
   const streak = stats.streak || 0;
   document.getElementById('streakText').textContent = `${streak} day streak`;
 
-  // Bottom links
   document.getElementById('openStats').addEventListener('click', () => {
     chrome.tabs.create({ url: chrome.runtime.getURL('stats.html') });
   });
@@ -336,7 +418,6 @@ function showSetupOverlay(settings) {
   if (mainContent) mainContent.classList.add('hidden');
   if (setupOverlay) setupOverlay.classList.remove('hidden');
 
-  // Render setup site toggles
   const setupSiteList = document.getElementById('setupSiteList');
   if (!setupSiteList) return;
 
@@ -362,7 +443,6 @@ function showSetupOverlay(settings) {
     setupSiteList.appendChild(row);
   });
 
-  // Setup custom site input
   const setupAddBtn = document.getElementById('setupAddCustomSite');
   const setupInput = document.getElementById('setupCustomInput');
   const setupCustomList = document.getElementById('setupCustomList');
@@ -415,17 +495,14 @@ function showSetupOverlay(settings) {
     if (e.key === 'Enter') setupAddBtn.onclick();
   };
 
-  // Lock In button
   const lockInBtn = document.getElementById('lockInBtn');
   lockInBtn.onclick = async () => {
-    // Gather selected sites from setup
     const checkboxes = setupSiteList.querySelectorAll('input[type="checkbox"]');
     const blockedSites = {};
     checkboxes.forEach((cb) => {
       blockedSites[cb.dataset.site] = cb.checked;
     });
 
-    // Check if at least one site is selected
     const hasAnySite = Object.values(blockedSites).some(v => v) || setupCustomSites.length > 0;
     if (!hasAnySite) {
       lockInBtn.textContent = 'SELECT AT LEAST ONE SITE';
@@ -447,7 +524,6 @@ function showSetupOverlay(settings) {
     await setLock();
     chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: newSettings });
 
-    // Reload popup with locked state
     init();
   };
 }
