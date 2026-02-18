@@ -1,4 +1,4 @@
-// MuscleTick - Blocked Page Controller
+// Muscle Memory - Blocked Page Controller
 
 const EXERCISES = [
   { name: '15 Pushups', emoji: '\uD83E\uDDD1\u200D\uD83C\uDFCB\uFE0F', desc: 'chest to the ground, full extension up', icon: '\uD83D\uDCAA' },
@@ -32,7 +32,7 @@ const penaltyIncrement = 30;
 let timerInterval = null;
 let violationsToday = 0;
 let exerciseCompleted = false;
-const circumference = 2 * Math.PI * 54; // circle radius 54
+const circumference = 2 * Math.PI * 54;
 
 // Get blocked site name from URL params
 const urlParams = new URLSearchParams(window.location.search);
@@ -71,9 +71,7 @@ async function recordViolation() {
       stats.dailyBlocks[todayKey] = (stats.dailyBlocks[todayKey] || 0) + 1;
       violationsToday = stats.dailyBlocks[todayKey];
 
-      // Add time saved estimate: assume user would have spent 8-15 min scrolling
-      // Bloated by 17% per spec
-      const baseSaved = 8 + Math.random() * 7; // 8-15 minutes
+      const baseSaved = 8 + Math.random() * 7;
       const bloatedSaved = baseSaved * 1.17;
       stats.timeSaved = (stats.timeSaved || 0) + bloatedSaved;
 
@@ -88,7 +86,6 @@ async function recordExercise() {
       const stats = result.stats || { totalBlockedAttempts: 0, exercisesDone: 0, streak: 0, dailyBlocks: {}, timeSaved: 0 };
       stats.exercisesDone = (stats.exercisesDone || 0) + 1;
 
-      // Update streak
       const todayKey = new Date().toISOString().slice(0, 10);
       const lastActive = stats.lastActiveDate || '';
       const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
@@ -122,7 +119,6 @@ function showExercise(exercise) {
 }
 
 function startTimer() {
-  // Calculate penalty: +30s for each violation today (current one is already counted)
   const penaltyMultiplier = Math.max(0, violationsToday - 1);
   timerSeconds = baseTimer + (penaltyMultiplier * penaltyIncrement);
 
@@ -134,7 +130,6 @@ function startTimer() {
   ringEl.style.strokeDashoffset = '0';
   textEl.textContent = timerSeconds;
 
-  // Show penalty notice if applicable
   if (penaltyMultiplier > 0) {
     const notice = document.getElementById('penaltyNotice');
     notice.classList.remove('hidden');
@@ -148,7 +143,6 @@ function startTimer() {
     const progress = (totalSeconds - timerSeconds) / totalSeconds;
     ringEl.style.strokeDashoffset = circumference * (1 - progress);
 
-    // Change color as timer progresses
     if (progress > 0.75) {
       ringEl.style.stroke = '#00e676';
       textEl.style.color = '#00e676';
@@ -169,62 +163,75 @@ function showDonePhase() {
   document.getElementById('phaseExercise').classList.add('hidden');
   document.getElementById('phaseDone').classList.remove('hidden');
 
-  // Random motivational quote
   const quote = MOTIVATION_QUOTES[Math.floor(Math.random() * MOTIVATION_QUOTES.length)];
   document.getElementById('motivationQuote').textContent = quote;
 
   recordExercise();
 }
 
-// Reroll exercise
-document.getElementById('rerollExercise').addEventListener('click', () => {
-  const exercise = pickExercise();
-  showExercise(exercise);
-});
-
-// Phase 3 buttons - Enter site
-document.getElementById('proceedBtn').addEventListener('click', () => {
+function handleProceedClick() {
   if (!exerciseCompleted) return;
 
-  // Disable button to prevent double clicks
   const btn = document.getElementById('proceedBtn');
   btn.disabled = true;
   btn.textContent = 'REDIRECTING...';
 
-  // Grant temporary access and redirect
-  chrome.runtime.sendMessage({
-    type: 'grantTemporaryAccess',
-    url: blockedUrl,
-  }, (response) => {
-    // Small delay to ensure storage is synced, then redirect
-    setTimeout(() => {
+  // Grant temporary access
+  try {
+    chrome.runtime.sendMessage({
+      type: 'grantTemporaryAccess',
+      url: blockedUrl,
+    }, () => {
+      // Redirect after a short delay
       window.location.href = blockedUrl;
-    }, 150);
-  });
-});
+    });
+  } catch (e) {
+    // If messaging fails, try redirecting anyway
+    window.location.href = blockedUrl;
+  }
 
-document.getElementById('stayFocused').addEventListener('click', () => {
-  // Go to a productive page instead
+  // Fallback: redirect after 500ms even if message doesn't complete
+  setTimeout(() => {
+    window.location.href = blockedUrl;
+  }, 500);
+}
+
+function handleStayFocusedClick() {
   window.location.href = 'https://www.google.com';
-});
+}
 
-// Initialize - skip password phase, go directly to exercise
+function handleRerollClick() {
+  const exercise = pickExercise();
+  showExercise(exercise);
+}
+
 async function init() {
+  // Attach event listeners
+  const proceedBtn = document.getElementById('proceedBtn');
+  const stayFocusedBtn = document.getElementById('stayFocused');
+  const rerollBtn = document.getElementById('rerollExercise');
+
+  if (proceedBtn) {
+    proceedBtn.onclick = handleProceedClick;
+  }
+  if (stayFocusedBtn) {
+    stayFocusedBtn.onclick = handleStayFocusedClick;
+  }
+  if (rerollBtn) {
+    rerollBtn.onclick = handleRerollClick;
+  }
+
   await loadViolations();
   await recordViolation();
 
-  // Update violation count display
   document.getElementById('violationCount').textContent = violationsToday;
 
-  // Set blocked site name
   const el = document.getElementById('blockedSiteName');
   if (el) el.textContent = siteName;
 
-  // Pick and show exercise
   const exercise = pickExercise();
   showExercise(exercise);
 
-  // Start timer immediately
   startTimer();
 }
 

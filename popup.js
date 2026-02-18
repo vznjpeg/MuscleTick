@@ -238,11 +238,9 @@ async function init() {
   const stats = await getStats();
   const premium = await isPremium();
 
-  // Render site lists
+  // Render site list
   const siteList = document.getElementById('siteList');
-  const hideModeList = document.getElementById('hideModeList');
   renderSiteList(siteList, SITES, 'blockedSites', settings, '', premium);
-  renderSiteList(hideModeList, SITES, 'hiddenElements', settings, 'toggle-hide', premium);
 
   // Render custom sites
   renderCustomSites(settings, premium);

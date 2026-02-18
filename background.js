@@ -44,17 +44,22 @@ const DEFAULT_SETTINGS = {
     tiktok: false,
     reddit: false,
   },
-  hiddenElements: {
-    instagram: false,
-    facebook: false,
-    youtube: false,
-    twitter: false,
-    linkedin: false,
-    tiktok: false,
-    reddit: false,
-  },
-  customSites: [], // Array of custom blocked domains
+  customSites: [],
 };
+
+// In-memory temp access map for instant checks (no async storage delay)
+const tempAccessMap = {};
+
+// Load existing temp access from storage on startup
+chrome.storage.sync.get(['temporaryAccess'], (result) => {
+  const stored = result.temporaryAccess || {};
+  const now = Date.now();
+  for (const [domain, expiry] of Object.entries(stored)) {
+    if (expiry > now) {
+      tempAccessMap[domain] = expiry;
+    }
+  }
+});
 
 // Initialize settings if not exists
 chrome.runtime.onInstalled.addListener(async () => {
@@ -63,7 +68,6 @@ chrome.runtime.onInstalled.addListener(async () => {
     await chrome.storage.sync.set({ settings: DEFAULT_SETTINGS });
   }
 
-  // Initialize stats
   const statsResult = await chrome.storage.sync.get(['stats']);
   if (!statsResult.stats) {
     await chrome.storage.sync.set({
@@ -91,36 +95,37 @@ function matchesCustomSite(hostname, customSites) {
   return null;
 }
 
+// Check temp access from in-memory map (synchronous, no race condition)
+function hasTempAccess(hostname) {
+  const cleanHostname = hostname.replace(/^www\./, '');
+  const now = Date.now();
+  for (const [domain, expiry] of Object.entries(tempAccessMap)) {
+    if (expiry > now && (cleanHostname === domain || cleanHostname.endsWith('.' + domain) || domain.endsWith('.' + cleanHostname))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // Handle navigation to blocked sites
 chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
-  // Only handle main frame navigation
   if (details.frameId !== 0) return;
 
   try {
     const url = new URL(details.url);
     const hostname = url.hostname.toLowerCase();
 
-    const result = await chrome.storage.sync.get(['settings', 'temporaryAccess']);
+    // Check in-memory temp access FIRST (instant, no async)
+    if (hasTempAccess(hostname)) return;
+
+    const result = await chrome.storage.sync.get(['settings']);
     const settings = result.settings || DEFAULT_SETTINGS;
-    const tempAccess = result.temporaryAccess || {};
 
-    // Check if focus mode is on
     if (!settings.focusMode) return;
-
-    // Check temporary access first
-    const now = Date.now();
-    for (const domain of Object.keys(tempAccess)) {
-      if (hostname.includes(domain) || domain.includes(hostname.replace(/^www\./, ''))) {
-        if (tempAccess[domain] > now) {
-          return; // Access granted
-        }
-      }
-    }
 
     // Check preset blocked sites
     let siteKey = DOMAIN_TO_KEY[hostname];
     if (!siteKey) {
-      // Check partial matches
       for (const domain of BLOCKED_DOMAINS) {
         if (hostname.includes(domain)) {
           siteKey = DOMAIN_TO_KEY[domain] || DOMAIN_TO_KEY['www.' + domain];
@@ -135,7 +140,6 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
       shouldBlock = true;
     }
 
-    // Check custom sites
     const customSites = settings.customSites || [];
     const matchedCustomSite = matchesCustomSite(hostname, customSites);
     if (matchedCustomSite) {
@@ -144,7 +148,6 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
 
     if (!shouldBlock) return;
 
-    // Redirect to blocked page
     const blockedUrl = chrome.runtime.getURL('blocked.html') + '?url=' + encodeURIComponent(details.url);
     chrome.tabs.update(details.tabId, { url: blockedUrl });
   } catch (err) {
@@ -155,7 +158,6 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
 // Handle messages from popup and content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'settingsUpdated') {
-    // Notify all tabs to re-check
     chrome.tabs.query({}, (tabs) => {
       tabs.forEach((tab) => {
         if (tab.id) {
@@ -167,23 +169,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === 'grantTemporaryAccess') {
-    // Grant 60 SECONDS access to the site
     const url = message.url;
     try {
       const hostname = new URL(url).hostname.replace(/^www\./, '');
       const expiryTime = Date.now() + 60 * 1000; // 60 seconds
 
+      // Write to in-memory map FIRST (instant for navigation checks)
+      tempAccessMap[hostname] = expiryTime;
+
+      // Also persist to storage for cross-session recovery
       chrome.storage.sync.get(['temporaryAccess'], (result) => {
         const tempAccess = result.temporaryAccess || {};
         tempAccess[hostname] = expiryTime;
-        chrome.storage.sync.set({ temporaryAccess }, () => {
+        chrome.storage.sync.set({ temporaryAccess: tempAccess }, () => {
           sendResponse({ success: true, expiryTime });
         });
       });
     } catch (err) {
       sendResponse({ success: false, error: err.message });
     }
-    return true; // Keep channel open for async response
+    return true;
   }
 
   if (message.type === 'getStats') {
@@ -217,25 +222,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return false;
 });
 
-// Clean up expired temporary access entries periodically
+// Clean up expired entries periodically
 chrome.alarms.create('cleanupTempAccess', { periodInMinutes: 1 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'cleanupTempAccess') {
+    // Clean in-memory map
+    const now = Date.now();
+    for (const [hostname, expiry] of Object.entries(tempAccessMap)) {
+      if (expiry < now) {
+        delete tempAccessMap[hostname];
+      }
+    }
+
+    // Clean storage
     chrome.storage.sync.get(['temporaryAccess'], (result) => {
       const tempAccess = result.temporaryAccess || {};
-      const now = Date.now();
       let changed = false;
-
       for (const [hostname, expiry] of Object.entries(tempAccess)) {
         if (expiry < now) {
           delete tempAccess[hostname];
           changed = true;
         }
       }
-
       if (changed) {
-        chrome.storage.sync.set({ temporaryAccess });
+        chrome.storage.sync.set({ temporaryAccess: tempAccess });
       }
     });
   }
@@ -251,7 +262,6 @@ chrome.alarms.onAlarm.addListener((alarm) => {
       const todayKey = new Date().toISOString().slice(0, 10);
       const lastActive = stats.lastActiveDate;
 
-      // If last active was 2+ days ago, reset streak
       if (lastActive) {
         const lastDate = new Date(lastActive);
         const today = new Date(todayKey);
@@ -262,9 +272,6 @@ chrome.alarms.onAlarm.addListener((alarm) => {
           chrome.storage.sync.set({ stats });
         }
       }
-
-      // Note: dailyBlocks automatically resets because it uses date keys
-      // Each new day gets a fresh count since we use todayKey as the key
     });
   }
 });

@@ -228,11 +228,6 @@ h2 {
   transform: translateX(22px);
 }
 
-/* Hide mode toggle - different color */
-.toggle-hide input:checked + .toggle-slider {
-  background: var(--orange);
-}
-
 /* Master Toggle */
 .master-toggle {
   margin-top: 4px;

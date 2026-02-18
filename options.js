@@ -185,9 +185,8 @@ async function init() {
     });
   }
 
-  // Render site lists
+  // Render blocked sites list
   renderSiteList('blockedSitesList', SITES, 'blockedSites', settings);
-  renderSiteList('hiddenSitesList', SITES, 'hiddenElements', settings, 'toggle-hide');
 
   // Premium-gated sections
   const premiumSections = document.querySelectorAll('.premium-section');
