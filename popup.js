@@ -104,6 +104,17 @@ function isValidDomain(domain) {
   return domainRegex.test(domain);
 }
 
+let toastTimeout = null;
+function showSaveToast() {
+  const toast = document.getElementById('saveToast');
+  if (!toast) return;
+  if (toastTimeout) clearTimeout(toastTimeout);
+  toast.classList.add('show');
+  toastTimeout = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 1500);
+}
+
 function renderCustomSites(settings, locked) {
   const container = document.getElementById('customSitesList');
   container.innerHTML = '';
@@ -139,6 +150,7 @@ function renderCustomSites(settings, locked) {
         // Removing a site = loosening restriction, re-lock for 6hrs
         const lockUntil = await setLock();
         chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: current });
+        showSaveToast();
         renderCustomSites(current, isLocked(lockUntil));
         updateLockBanner(lockUntil);
         // Re-render site list too since lock state changed
@@ -179,6 +191,7 @@ function renderSiteList(container, sites, settingsKey, settings, locked) {
       current[settingsKey][site.id] = checkbox.checked;
       await saveSettings(current);
       chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: current });
+      showSaveToast();
 
       // If turning OFF a site (loosening restriction), re-lock for 6hrs
       if (wasChecked && !checkbox.checked) {
@@ -225,6 +238,7 @@ async function addCustomSite(locked) {
   settings.customSites = [...customSites, domain];
   await saveSettings(settings);
   chrome.runtime.sendMessage({ type: 'settingsUpdated', settings });
+  showSaveToast();
 
   input.value = '';
   renderCustomSites(settings, locked);
