@@ -19,8 +19,34 @@
       </header>
 
       <div class="setup-warning">
-        &#x26A0;&#xFE0F; these settings will be <strong>locked for 6 hours</strong>. you won't be able to unblock sites until the timer expires. choose wisely.
+        &#x26A0;&#xFE0F; these settings will be <strong>locked</strong>. you won't be able to unblock sites until the timer expires. choose wisely.
       </div>
+
+      <section class="lock-duration-section">
+        <h2>lock duration</h2>
+        <div class="duration-options">
+          <label class="duration-option">
+            <input type="radio" name="lockDuration" value="1" />
+            <span class="duration-btn">1 hour</span>
+          </label>
+          <label class="duration-option">
+            <input type="radio" name="lockDuration" value="3" />
+            <span class="duration-btn">3 hours</span>
+          </label>
+          <label class="duration-option">
+            <input type="radio" name="lockDuration" value="6" checked />
+            <span class="duration-btn">6 hours</span>
+          </label>
+          <label class="duration-option">
+            <input type="radio" name="lockDuration" value="12" />
+            <span class="duration-btn">12 hours</span>
+          </label>
+          <label class="duration-option">
+            <input type="radio" name="lockDuration" value="24" />
+            <span class="duration-btn">24 hours</span>
+          </label>
+        </div>
+      </section>
 
       <section class="sites-section">
         <h2>choose sites to block</h2>
@@ -39,7 +65,7 @@
       </section>
 
       <button class="btn-lock-in" id="lockInBtn">
-        &#x1F512; LOCK IN FOR 6 HOURS
+        &#x1F512; LOCK IN
       </button>
     </div>
   </div>

@@ -24,7 +24,7 @@ const DEFAULT_SETTINGS = {
   customSites: [],
 };
 
-const LOCK_DURATION = 6 * 60 * 60 * 1000; // 6 hours in ms
+const DEFAULT_LOCK_HOURS = 6;
 
 // Pending changes tracking
 let savedSettings = null;
@@ -56,10 +56,22 @@ async function getLockState() {
   });
 }
 
-async function setLock() {
-  const lockUntil = Date.now() + LOCK_DURATION;
+async function getLockDuration() {
   return new Promise((resolve) => {
-    chrome.storage.sync.set({ settingsLockUntil: lockUntil, setupComplete: true }, () => {
+    chrome.storage.sync.get(['lockDurationHours'], (result) => {
+      resolve(result.lockDurationHours || DEFAULT_LOCK_HOURS);
+    });
+  });
+}
+
+async function setLock(hours = null) {
+  // If hours not provided, use stored preference
+  if (hours === null) {
+    hours = await getLockDuration();
+  }
+  const lockUntil = Date.now() + (hours * 60 * 60 * 1000);
+  return new Promise((resolve) => {
+    chrome.storage.sync.set({ settingsLockUntil: lockUntil, setupComplete: true, lockDurationHours: hours }, () => {
       resolve(lockUntil);
     });
   });
@@ -508,11 +520,15 @@ function showSetupOverlay(settings) {
       lockInBtn.textContent = 'SELECT AT LEAST ONE SITE';
       lockInBtn.style.background = 'linear-gradient(135deg, #333, #555)';
       setTimeout(() => {
-        lockInBtn.textContent = 'LOCK IN FOR 6 HOURS';
+        lockInBtn.textContent = 'LOCK IN';
         lockInBtn.style.background = '';
       }, 2000);
       return;
     }
+
+    // Get selected duration
+    const durationRadio = document.querySelector('input[name="lockDuration"]:checked');
+    const lockHours = durationRadio ? parseInt(durationRadio.value, 10) : DEFAULT_LOCK_HOURS;
 
     const newSettings = {
       focusMode: true,
@@ -521,7 +537,7 @@ function showSetupOverlay(settings) {
     };
 
     await saveSettings(newSettings);
-    await setLock();
+    await setLock(lockHours);
     chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: newSettings });
 
     init();
