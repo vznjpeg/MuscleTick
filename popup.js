@@ -10,23 +10,11 @@ const SITES = [
   { id: 'reddit', name: 'Reddit', emoji: '\uD83E\uDD16', domain: 'reddit.com' },
 ];
 
-const FREE_SITE_LIMIT = 2;
-const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/test_YOUR_STRIPE_PAYMENT_LINK';
-
 const DEFAULT_SETTINGS = {
   focusMode: true,
   blockedSites: {
     instagram: true,
     facebook: true,
-    youtube: false,
-    twitter: false,
-    linkedin: false,
-    tiktok: false,
-    reddit: false,
-  },
-  hiddenElements: {
-    instagram: false,
-    facebook: false,
     youtube: false,
     twitter: false,
     linkedin: false,
@@ -58,14 +46,6 @@ async function getStats() {
   });
 }
 
-async function isPremium() {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get(['premium'], (result) => {
-      resolve(result.premium === true);
-    });
-  });
-}
-
 function formatTimeSaved(minutes) {
   if (minutes < 60) return `${Math.round(minutes)}m`;
   const h = Math.floor(minutes / 60);
@@ -90,26 +70,7 @@ function isValidDomain(domain) {
   return domainRegex.test(domain);
 }
 
-function countBlockedSites(settings) {
-  let count = 0;
-  if (settings.blockedSites) {
-    for (const key of Object.keys(settings.blockedSites)) {
-      if (settings.blockedSites[key]) count++;
-    }
-  }
-  count += (settings.customSites || []).length;
-  return count;
-}
-
-function showUpgradeModal() {
-  document.getElementById('upgradeModal').classList.remove('hidden');
-}
-
-function hideUpgradeModal() {
-  document.getElementById('upgradeModal').classList.add('hidden');
-}
-
-function renderCustomSites(settings, premium) {
+function renderCustomSites(settings) {
   const container = document.getElementById('customSitesList');
   container.innerHTML = '';
 
@@ -132,22 +93,14 @@ function renderCustomSites(settings, premium) {
       current.customSites = (current.customSites || []).filter(d => d !== domain);
       await saveSettings(current);
       chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: current });
-      renderCustomSites(current, premium);
+      renderCustomSites(current);
     });
 
     container.appendChild(row);
   });
-
-  // Show/hide custom site input based on premium
-  const addCustomSection = document.querySelector('.add-custom-site');
-  if (!premium) {
-    addCustomSection.classList.add('hidden');
-  } else {
-    addCustomSection.classList.remove('hidden');
-  }
 }
 
-function renderSiteList(container, sites, settingsKey, settings, toggleClass, premium) {
+function renderSiteList(container, sites, settingsKey, settings) {
   container.innerHTML = '';
 
   sites.forEach((site) => {
@@ -161,7 +114,7 @@ function renderSiteList(container, sites, settingsKey, settings, toggleClass, pr
         <span class="site-emoji">${site.emoji}</span>
         <span class="site-name">${site.name}</span>
       </div>
-      <label class="toggle ${toggleClass}">
+      <label class="toggle">
         <input type="checkbox" data-site="${site.id}" data-key="${settingsKey}" ${isChecked ? 'checked' : ''}>
         <span class="toggle-slider"></span>
       </label>
@@ -169,16 +122,6 @@ function renderSiteList(container, sites, settingsKey, settings, toggleClass, pr
 
     const checkbox = row.querySelector('input');
     checkbox.addEventListener('change', async () => {
-      // Check free limit for blockedSites
-      if (settingsKey === 'blockedSites' && checkbox.checked && !premium) {
-        const current = await getSettings();
-        if (countBlockedSites(current) >= FREE_SITE_LIMIT) {
-          checkbox.checked = false;
-          showUpgradeModal();
-          return;
-        }
-      }
-
       const current = await getSettings();
       current[settingsKey][site.id] = checkbox.checked;
       await saveSettings(current);
@@ -189,12 +132,7 @@ function renderSiteList(container, sites, settingsKey, settings, toggleClass, pr
   });
 }
 
-async function addCustomSite(premium) {
-  if (!premium) {
-    showUpgradeModal();
-    return;
-  }
-
+async function addCustomSite() {
   const input = document.getElementById('customSiteInput');
   const domain = normalizeDomain(input.value);
 
@@ -230,35 +168,24 @@ async function addCustomSite(premium) {
   chrome.runtime.sendMessage({ type: 'settingsUpdated', settings });
 
   input.value = '';
-  renderCustomSites(settings, premium);
+  renderCustomSites(settings);
 }
 
 async function init() {
   const settings = await getSettings();
   const stats = await getStats();
-  const premium = await isPremium();
 
   // Render site list
   const siteList = document.getElementById('siteList');
-  renderSiteList(siteList, SITES, 'blockedSites', settings, '', premium);
+  renderSiteList(siteList, SITES, 'blockedSites', settings);
 
   // Render custom sites
-  renderCustomSites(settings, premium);
-
-  // Show limit notice for free users
-  const limitNotice = document.getElementById('limitNotice');
-  if (!premium && limitNotice) {
-    const currentCount = countBlockedSites(settings);
-    limitNotice.textContent = `${currentCount}/${FREE_SITE_LIMIT} free sites used`;
-    limitNotice.classList.remove('hidden');
-  } else if (limitNotice) {
-    limitNotice.classList.add('hidden');
-  }
+  renderCustomSites(settings);
 
   // Add custom site handler
-  document.getElementById('addCustomSite').addEventListener('click', () => addCustomSite(premium));
+  document.getElementById('addCustomSite').addEventListener('click', addCustomSite);
   document.getElementById('customSiteInput').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') addCustomSite(premium);
+    if (e.key === 'Enter') addCustomSite();
   });
 
   // Stats
@@ -283,12 +210,6 @@ async function init() {
     updateMasterButton(masterBtn, current.focusMode);
     chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: current });
   });
-
-  // Upgrade modal handlers
-  document.getElementById('upgradeBtn').addEventListener('click', () => {
-    chrome.tabs.create({ url: STRIPE_PAYMENT_LINK });
-  });
-  document.getElementById('closeUpgrade').addEventListener('click', hideUpgradeModal);
 
   // Bottom links
   document.getElementById('openStats').addEventListener('click', () => {
