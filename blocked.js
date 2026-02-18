@@ -1,4 +1,4 @@
-// Muscle Memory - Blocked Page Controller
+// Dopamine Detox - Blocked Page Controller
 
 const EXERCISES = [
   { name: '15 Pushups', emoji: '\uD83E\uDDD1\u200D\uD83C\uDFCB\uFE0F', desc: 'chest to the ground, full extension up', icon: '\uD83D\uDCAA' },

@@ -1,4 +1,4 @@
-// Muscle Memory - Background Service Worker
+// Dopamine Detox - Background Service Worker
 
 const BLOCKED_DOMAINS = [
   'instagram.com',
@@ -151,7 +151,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
     const blockedUrl = chrome.runtime.getURL('blocked.html') + '?url=' + encodeURIComponent(details.url);
     chrome.tabs.update(details.tabId, { url: blockedUrl });
   } catch (err) {
-    console.error('Muscle Memory navigation error:', err);
+    console.error('Dopamine Detox navigation error:', err);
   }
 });
 
@@ -201,20 +201,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'getSettings') {
     chrome.storage.sync.get(['settings'], (result) => {
       sendResponse(result.settings || DEFAULT_SETTINGS);
-    });
-    return true;
-  }
-
-  if (message.type === 'checkPremium') {
-    chrome.storage.sync.get(['premium'], (result) => {
-      sendResponse({ premium: result.premium === true });
-    });
-    return true;
-  }
-
-  if (message.type === 'upgradeToPremium') {
-    chrome.storage.sync.set({ premium: true }, () => {
-      sendResponse({ success: true });
     });
     return true;
   }
@@ -276,4 +262,4 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
-console.log('Muscle Memory background service worker loaded');
+console.log('Dopamine Detox background service worker loaded');

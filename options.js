@@ -1,4 +1,4 @@
-// Muscle Memory Options Page
+// Dopamine Detox Options Page
 
 const SITES = [
   { id: 'instagram', name: 'Instagram', emoji: '\uD83D\uDCF7' },
@@ -25,22 +25,11 @@ const EXERCISES = [
   { id: 'calfraises', name: '15 Calf Raises', emoji: '\uD83E\uDDB6' },
 ];
 
-const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/test_YOUR_STRIPE_PAYMENT_LINK';
-
 const DEFAULT_SETTINGS = {
   focusMode: true,
   blockedSites: {
     instagram: true,
     facebook: true,
-    youtube: false,
-    twitter: false,
-    linkedin: false,
-    tiktok: false,
-    reddit: false,
-  },
-  hiddenElements: {
-    instagram: false,
-    facebook: false,
     youtube: false,
     twitter: false,
     linkedin: false,
@@ -67,14 +56,6 @@ async function saveSettings(settings) {
   });
 }
 
-async function isPremium() {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get(['premium'], (result) => {
-      resolve(result.premium === true);
-    });
-  });
-}
-
 function showSaveNotice() {
   const notice = document.getElementById('saveNotice');
   notice.classList.add('visible');
@@ -83,7 +64,7 @@ function showSaveNotice() {
   }, 2000);
 }
 
-function renderSiteList(containerId, sites, settingsKey, settings, toggleClass = '') {
+function renderSiteList(containerId, sites, settingsKey, settings) {
   const container = document.getElementById(containerId);
   container.innerHTML = '';
 
@@ -96,7 +77,7 @@ function renderSiteList(containerId, sites, settingsKey, settings, toggleClass =
         <span class="site-emoji">${site.emoji}</span>
         <span class="site-name">${site.name}</span>
       </div>
-      <label class="toggle ${toggleClass}">
+      <label class="toggle">
         <input type="checkbox" data-site="${site.id}" data-key="${settingsKey}" ${isChecked ? 'checked' : ''}>
         <span class="toggle-slider"></span>
       </label>
@@ -164,47 +145,17 @@ function renderExerciseGrid(settings) {
 
 async function init() {
   const settings = await getSettings();
-  const premium = await isPremium();
-
-  // Premium banner
-  const premiumBanner = document.getElementById('premiumBanner');
-  const premiumBadge = document.getElementById('premiumBadge');
-  if (premium) {
-    if (premiumBanner) premiumBanner.classList.add('hidden');
-    if (premiumBadge) premiumBadge.classList.remove('hidden');
-  } else {
-    if (premiumBanner) premiumBanner.classList.remove('hidden');
-    if (premiumBadge) premiumBadge.classList.add('hidden');
-  }
-
-  // Upgrade button in banner
-  const upgradeBannerBtn = document.getElementById('upgradeBannerBtn');
-  if (upgradeBannerBtn) {
-    upgradeBannerBtn.addEventListener('click', () => {
-      chrome.tabs.create({ url: STRIPE_PAYMENT_LINK });
-    });
-  }
 
   // Render blocked sites list
   renderSiteList('blockedSitesList', SITES, 'blockedSites', settings);
 
-  // Premium-gated sections
-  const premiumSections = document.querySelectorAll('.premium-section');
-  premiumSections.forEach((section) => {
-    if (!premium) {
-      section.classList.add('locked');
-    }
-  });
-
-  // Timer settings (premium only)
+  // Timer settings
   const baseTimer = document.getElementById('baseTimer');
   const penaltyIncrement = document.getElementById('penaltyIncrement');
 
   if (baseTimer) {
     baseTimer.value = settings.baseTimer || 30;
-    baseTimer.disabled = !premium;
     baseTimer.addEventListener('change', async () => {
-      if (!premium) return;
       const current = await getSettings();
       current.baseTimer = parseInt(baseTimer.value);
       await saveSettings(current);
@@ -214,9 +165,7 @@ async function init() {
 
   if (penaltyIncrement) {
     penaltyIncrement.value = settings.penaltyIncrement || 30;
-    penaltyIncrement.disabled = !premium;
     penaltyIncrement.addEventListener('change', async () => {
-      if (!premium) return;
       const current = await getSettings();
       current.penaltyIncrement = parseInt(penaltyIncrement.value);
       await saveSettings(current);
@@ -224,29 +173,20 @@ async function init() {
     });
   }
 
-  // Exercise grid (premium only)
-  if (premium) {
-    renderExerciseGrid(settings);
-  } else {
-    const exerciseGrid = document.getElementById('exerciseGrid');
-    if (exerciseGrid) {
-      exerciseGrid.innerHTML = '<p class="locked-msg">upgrade to premium to customize exercises</p>';
-    }
-  }
+  // Exercise grid
+  renderExerciseGrid(settings);
 
-  // Export data (premium only)
+  // Export data
   const exportBtn = document.getElementById('exportData');
   if (exportBtn) {
-    exportBtn.disabled = !premium;
     exportBtn.addEventListener('click', async () => {
-      if (!premium) return;
       const result = await chrome.storage.sync.get(['settings', 'stats']);
       const dataStr = JSON.stringify(result, null, 2);
       const blob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'musclememory-data.json';
+      a.download = 'dopamine-detox-data.json';
       a.click();
       URL.revokeObjectURL(url);
     });
@@ -260,7 +200,7 @@ async function init() {
     });
   }
 
-  // Reset stats (always available)
+  // Reset stats
   const resetBtn = document.getElementById('resetStats');
   if (resetBtn) {
     resetBtn.addEventListener('click', async () => {

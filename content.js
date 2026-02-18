@@ -1,4 +1,4 @@
-// Muscle Memory Content Script
+// Dopamine Detox Content Script
 
 function getSiteKey() {
   const hostname = window.location.hostname.toLowerCase();

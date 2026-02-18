@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Muscle Memory",
+  "name": "Dopamine Detox",
   "version": "1.0.0",
-  "description": "Muscle Memory - Block distracting sites & earn your scroll with pushups, squats, and more.",
+  "description": "Dopamine Detox - Block distracting sites & earn your scroll with pushups, squats, and more.",
   "permissions": [
     "storage",
     "tabs",
