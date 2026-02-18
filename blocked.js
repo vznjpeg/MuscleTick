@@ -205,6 +205,97 @@ function handleRerollClick() {
   showExercise(exercise);
 }
 
+// Emergency Pass Functions
+async function checkEmergencyPassUsed() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['emergencyPassUsedAt', 'settingsLockUntil'], (result) => {
+      const usedAt = result.emergencyPassUsedAt || 0;
+      const lockUntil = result.settingsLockUntil || 0;
+
+      // Pass is "used" if it was used during the current lock period
+      // If lock has expired and been reset, the pass is available again
+      if (usedAt > 0 && lockUntil > Date.now() && usedAt < lockUntil) {
+        resolve(true);
+      } else {
+        resolve(false);
+      }
+    });
+  });
+}
+
+function showEmergencyConfirmModal() {
+  const modal = document.createElement('div');
+  modal.className = 'emergency-modal';
+  modal.id = 'emergencyModal';
+  modal.innerHTML = `
+    <div class="emergency-modal-content">
+      <h2>&#x1F6A8; use emergency pass?</h2>
+      <p>this will <strong>permanently unblock ${siteName}</strong> and update your settings. you only get 1 emergency pass per lock period.</p>
+      <div class="emergency-modal-btns">
+        <button class="btn-emergency-cancel" id="emergencyCancelBtn">cancel</button>
+        <button class="btn-emergency-confirm" id="emergencyConfirmBtn">unblock</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  document.getElementById('emergencyCancelBtn').onclick = () => {
+    modal.remove();
+  };
+
+  document.getElementById('emergencyConfirmBtn').onclick = async () => {
+    await useEmergencyPass();
+    modal.remove();
+  };
+}
+
+async function useEmergencyPass() {
+  const emergencyBtn = document.getElementById('emergencyBtn');
+  emergencyBtn.disabled = true;
+  emergencyBtn.textContent = 'unblocking...';
+
+  try {
+    // Get the hostname to unblock
+    const hostname = new URL(blockedUrl).hostname.replace(/^www\./, '');
+
+    // Send message to background to permanently unblock
+    chrome.runtime.sendMessage({
+      type: 'useEmergencyPass',
+      hostname: hostname,
+      url: blockedUrl,
+    }, (response) => {
+      if (response && response.success) {
+        // Redirect to the site
+        window.location.href = blockedUrl;
+      } else {
+        emergencyBtn.textContent = 'failed - try again';
+        emergencyBtn.disabled = false;
+      }
+    });
+  } catch (e) {
+    emergencyBtn.textContent = 'failed - try again';
+    emergencyBtn.disabled = false;
+  }
+}
+
+async function initEmergencyPass() {
+  const emergencyBtn = document.getElementById('emergencyBtn');
+  const emergencyPass = document.getElementById('emergencyPass');
+
+  if (!emergencyBtn || !emergencyPass) return;
+
+  const used = await checkEmergencyPassUsed();
+
+  if (used) {
+    emergencyBtn.disabled = true;
+    emergencyBtn.textContent = '&#x1F6A8; emergency pass used';
+    emergencyPass.classList.add('used');
+    document.querySelector('.emergency-note').textContent = 'already used this lock period';
+  } else {
+    emergencyBtn.onclick = showEmergencyConfirmModal;
+  }
+}
+
 async function init() {
   // Attach event listeners
   const proceedBtn = document.getElementById('proceedBtn');
@@ -233,6 +324,9 @@ async function init() {
   showExercise(exercise);
 
   startTimer();
+
+  // Initialize emergency pass
+  initEmergencyPass();
 }
 
 // Run init when DOM is ready

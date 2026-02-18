@@ -265,6 +265,75 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === 'useEmergencyPass') {
+    const hostname = message.hostname.replace(/^www\./, '');
+
+    chrome.storage.sync.get(['settings', 'emergencyPassUsedAt', 'settingsLockUntil'], (result) => {
+      const settings = result.settings || DEFAULT_SETTINGS;
+      const usedAt = result.emergencyPassUsedAt || 0;
+      const lockUntil = result.settingsLockUntil || 0;
+
+      // Check if already used this lock period
+      if (usedAt > 0 && lockUntil > Date.now() && usedAt < lockUntil) {
+        sendResponse({ success: false, error: 'Emergency pass already used' });
+        return;
+      }
+
+      // Find and disable the site
+      let found = false;
+
+      // Check preset sites
+      for (const [key, domain] of Object.entries(DOMAIN_TO_KEY)) {
+        const cleanDomain = key.replace(/^www\./, '');
+        if (hostname === cleanDomain || hostname.endsWith('.' + cleanDomain) || cleanDomain.endsWith('.' + hostname)) {
+          const siteKey = domain;
+          if (settings.blockedSites && settings.blockedSites[siteKey]) {
+            settings.blockedSites[siteKey] = false;
+            found = true;
+            break;
+          }
+        }
+      }
+
+      // Check custom sites if not found in presets
+      if (!found && settings.customSites && settings.customSites.length > 0) {
+        const customIndex = settings.customSites.findIndex(d => {
+          const cleanCustom = d.replace(/^www\./, '');
+          return hostname === cleanCustom || hostname.endsWith('.' + cleanCustom) || cleanCustom.endsWith('.' + hostname);
+        });
+
+        if (customIndex !== -1) {
+          settings.customSites.splice(customIndex, 1);
+          found = true;
+        }
+      }
+
+      if (!found) {
+        sendResponse({ success: false, error: 'Site not found in blocked list' });
+        return;
+      }
+
+      // Save updated settings and mark pass as used
+      chrome.storage.sync.set({
+        settings: settings,
+        emergencyPassUsedAt: Date.now(),
+      }, () => {
+        // Notify all tabs of settings change
+        chrome.tabs.query({}, (tabs) => {
+          tabs.forEach((tab) => {
+            if (tab.id) {
+              chrome.tabs.sendMessage(tab.id, { type: 'settingsUpdated', settings: settings }).catch(() => {});
+            }
+          });
+        });
+
+        sendResponse({ success: true });
+      });
+    });
+
+    return true;
+  }
+
   return false;
 });
 

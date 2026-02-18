@@ -381,3 +381,121 @@ input[type="password"]::placeholder {
 .btn-proceed:hover {
   box-shadow: 0 6px 30px rgba(0, 230, 118, 0.6) !important;
 }
+
+/* Emergency Pass */
+.emergency-pass {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100%;
+  max-width: 340px;
+}
+
+.btn-emergency {
+  width: 100%;
+  padding: 12px 20px;
+  border: 2px solid rgba(255, 193, 7, 0.3);
+  border-radius: 12px;
+  background: rgba(255, 193, 7, 0.1);
+  color: #ffc107;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: lowercase;
+}
+
+.btn-emergency:hover {
+  background: rgba(255, 193, 7, 0.2);
+  border-color: #ffc107;
+}
+
+.btn-emergency:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-dim);
+}
+
+.emergency-note {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 8px;
+}
+
+.emergency-pass.used .emergency-note {
+  color: var(--accent);
+}
+
+/* Emergency Confirm Modal */
+.emergency-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.emergency-modal-content {
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 32px;
+  max-width: 360px;
+  text-align: center;
+  border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.emergency-modal h2 {
+  font-size: 20px;
+  margin-bottom: 12px;
+  color: #ffc107;
+}
+
+.emergency-modal p {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.emergency-modal-btns {
+  display: flex;
+  gap: 12px;
+}
+
+.emergency-modal-btns button {
+  flex: 1;
+  padding: 14px;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-emergency-confirm {
+  background: linear-gradient(135deg, #ffc107, #ff9800);
+  border: none;
+  color: #000;
+}
+
+.btn-emergency-confirm:hover {
+  transform: scale(1.02);
+}
+
+.btn-emergency-cancel {
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-dim);
+}
+
+.btn-emergency-cancel:hover {
+  border-color: var(--text);
+  color: var(--text);
+}
