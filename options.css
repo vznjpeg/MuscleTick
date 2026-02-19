@@ -418,6 +418,20 @@ footer {
   font-size: 13px;
 }
 
+.footer-links {
+  margin-top: 8px;
+}
+
+.footer-links a {
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover {
+  color: var(--accent);
+}
+
 .hidden {
   display: none !important;
 }
