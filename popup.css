@@ -492,6 +492,14 @@ h2 {
   color: var(--text);
 }
 
+.duration-note {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  margin-top: 8px;
+  font-style: italic;
+}
+
 .btn-lock-in {
   width: 100%;
   padding: 18px;

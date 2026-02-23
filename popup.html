@@ -85,6 +85,34 @@
       &#x1F512; settings locked &middot; 6h remaining
     </div>
 
+    <!-- Lock Duration Selector (always visible) -->
+    <section class="lock-duration-section" id="mainDurationSection">
+      <h2>lock duration</h2>
+      <div class="duration-options" id="mainDurationOptions">
+        <label class="duration-option">
+          <input type="radio" name="mainLockDuration" value="1" />
+          <span class="duration-btn">1 hour</span>
+        </label>
+        <label class="duration-option">
+          <input type="radio" name="mainLockDuration" value="3" />
+          <span class="duration-btn">3 hours</span>
+        </label>
+        <label class="duration-option">
+          <input type="radio" name="mainLockDuration" value="6" checked />
+          <span class="duration-btn">6 hours</span>
+        </label>
+        <label class="duration-option">
+          <input type="radio" name="mainLockDuration" value="12" />
+          <span class="duration-btn">12 hours</span>
+        </label>
+        <label class="duration-option">
+          <input type="radio" name="mainLockDuration" value="24" />
+          <span class="duration-btn">24 hours</span>
+        </label>
+      </div>
+      <p class="duration-note" id="durationNote">applies to your next lock period</p>
+    </section>
+
     <div class="stats-banner" id="statsBanner">
       <div class="stat-item">
         <span class="stat-value" id="timeSaved">0m</span>

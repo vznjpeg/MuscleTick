@@ -208,13 +208,11 @@ function handleRerollClick() {
 // Emergency Pass Functions
 async function checkEmergencyPassUsed() {
   return new Promise((resolve) => {
-    chrome.storage.sync.get(['emergencyPassUsedAt', 'settingsLockUntil'], (result) => {
+    chrome.storage.sync.get(['emergencyPassUsedAt'], (result) => {
       const usedAt = result.emergencyPassUsedAt || 0;
-      const lockUntil = result.settingsLockUntil || 0;
 
-      // Pass is "used" if it was used during the current lock period
-      // If lock has expired and been reset, the pass is available again
-      if (usedAt > 0 && lockUntil > Date.now() && usedAt < lockUntil) {
+      // Pass is "used" if it was used within the last 24 hours
+      if (usedAt > 0 && (Date.now() - usedAt) < 24 * 60 * 60 * 1000) {
         resolve(true);
       } else {
         resolve(false);
@@ -230,7 +228,7 @@ function showEmergencyConfirmModal() {
   modal.innerHTML = `
     <div class="emergency-modal-content">
       <h2>&#x1F6A8; use emergency pass?</h2>
-      <p>this will <strong>permanently unblock ${siteName}</strong> and update your settings. you only get 1 emergency pass per lock period.</p>
+      <p>this will <strong>permanently unblock ${siteName}</strong> and update your settings. you only get 1 emergency pass every 24 hours.</p>
       <div class="emergency-modal-btns">
         <button class="btn-emergency-cancel" id="emergencyCancelBtn">cancel</button>
         <button class="btn-emergency-confirm" id="emergencyConfirmBtn">unblock</button>
@@ -290,7 +288,7 @@ async function initEmergencyPass() {
     emergencyBtn.disabled = true;
     emergencyBtn.textContent = '&#x1F6A8; emergency pass used';
     emergencyPass.classList.add('used');
-    document.querySelector('.emergency-note').textContent = 'already used this lock period';
+    document.querySelector('.emergency-note').textContent = 'already used in the last 24 hours';
   } else {
     emergencyBtn.onclick = showEmergencyConfirmModal;
   }

@@ -268,13 +268,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'useEmergencyPass') {
     const hostname = message.hostname.replace(/^www\./, '');
 
-    chrome.storage.sync.get(['settings', 'emergencyPassUsedAt', 'settingsLockUntil'], (result) => {
+    chrome.storage.sync.get(['settings', 'emergencyPassUsedAt'], (result) => {
       const settings = result.settings || DEFAULT_SETTINGS;
       const usedAt = result.emergencyPassUsedAt || 0;
-      const lockUntil = result.settingsLockUntil || 0;
 
-      // Check if already used this lock period
-      if (usedAt > 0 && lockUntil > Date.now() && usedAt < lockUntil) {
+      // Check if already used within the last 24 hours
+      if (usedAt > 0 && (Date.now() - usedAt) < 24 * 60 * 60 * 1000) {
         sendResponse({ success: false, error: 'Emergency pass already used' });
         return;
       }

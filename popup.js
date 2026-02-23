@@ -388,6 +388,20 @@ async function init() {
   updateLockBanner(lockState.lockUntil);
   if (locked) startCountdownTimer(lockState.lockUntil);
 
+  // Initialize lock duration selector in main view
+  const currentDuration = await getLockDuration();
+  const mainDurationRadios = document.querySelectorAll('input[name="mainLockDuration"]');
+  mainDurationRadios.forEach((radio) => {
+    radio.checked = parseInt(radio.value, 10) === currentDuration;
+    radio.addEventListener('change', async () => {
+      const hours = parseInt(radio.value, 10);
+      await new Promise((resolve) => {
+        chrome.storage.sync.set({ lockDurationHours: hours }, resolve);
+      });
+      showSaveToast();
+    });
+  });
+
   const siteList = document.getElementById('siteList');
   renderSiteList(siteList, SITES, 'blockedSites', settings, locked);
 
