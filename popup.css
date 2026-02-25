@@ -627,3 +627,66 @@ h2 {
   text-transform: uppercase;
   margin-left: 8px;
 }
+
+/* Premium Upgrade Banner */
+.upgrade-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 165, 0, 0.1));
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.upgrade-banner:hover {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(255, 165, 0, 0.2));
+  border-color: rgba(255, 215, 0, 0.5);
+  transform: scale(1.01);
+}
+
+.upgrade-icon {
+  font-size: 20px;
+}
+
+.upgrade-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.upgrade-text strong {
+  color: #ffd700;
+}
+
+.upgrade-link {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+/* Premium Badge */
+.premium-badge {
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  color: #000;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Premium Locked Row */
+.site-row.premium-locked {
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.site-row.premium-locked:hover {
+  opacity: 1;
+  background: rgba(255, 215, 0, 0.1);
+}
