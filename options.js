@@ -1,7 +1,5 @@
 // Dopamine Detox Options Page
 
-const STRIPE_URL = 'https://buy.stripe.com/00weVee9raiV6ascLZao80h';
-
 const SITES = [
   { id: 'instagram', name: 'Instagram', emoji: '\uD83D\uDCF7' },
   { id: 'facebook', name: 'Facebook', emoji: '\uD83D\uDC64' },
@@ -40,62 +38,6 @@ async function saveSettings(settings) {
   return new Promise((resolve) => {
     chrome.storage.sync.set({ settings }, resolve);
   });
-}
-
-async function getPremiumStatus() {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get(['isPremium'], (result) => {
-      resolve(result.isPremium || false);
-    });
-  });
-}
-
-async function setPremiumStatus(isPremium) {
-  return new Promise((resolve) => {
-    chrome.storage.sync.set({ isPremium }, resolve);
-  });
-}
-
-function renderPremiumSection(isPremium) {
-  const container = document.getElementById('premiumStatus');
-  if (!container) return;
-
-  if (isPremium) {
-    container.innerHTML = `
-      <div class="premium-active">
-        <span class="premium-active-icon">&#x2705;</span>
-        <div class="premium-active-text">
-          <strong>Premium Active</strong>
-          <span>You have full access to all features</span>
-        </div>
-      </div>
-    `;
-  } else {
-    container.innerHTML = `
-      <div class="premium-free">
-        <div class="premium-free-info">
-          <p><strong>Free Version</strong></p>
-          <p class="premium-free-desc">Block only 2 sites. Upgrade for unlimited sites + custom blockers.</p>
-        </div>
-        <div class="premium-buttons">
-          <button class="btn-upgrade" id="upgradeBtn">&#x1F451; Upgrade - One Time</button>
-          <button class="btn-activate" id="activateBtn">Already purchased? Activate</button>
-        </div>
-      </div>
-    `;
-
-    document.getElementById('upgradeBtn').addEventListener('click', () => {
-      chrome.tabs.create({ url: STRIPE_URL });
-    });
-
-    document.getElementById('activateBtn').addEventListener('click', async () => {
-      if (confirm('By clicking OK, you confirm that you have completed your purchase. Premium features will be activated.')) {
-        await setPremiumStatus(true);
-        showSaveNotice();
-        renderPremiumSection(true);
-      }
-    });
-  }
 }
 
 function showSaveNotice() {
@@ -141,10 +83,6 @@ function renderSiteList(containerId, sites, settingsKey, settings) {
 
 async function init() {
   const settings = await getSettings();
-  const isPremium = await getPremiumStatus();
-
-  // Render premium section
-  renderPremiumSection(isPremium);
 
   // Render blocked sites list
   renderSiteList('blockedSitesList', SITES, 'blockedSites', settings);

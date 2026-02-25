@@ -1,8 +1,5 @@
 // Dopamine Detox Popup Controller
 
-const FREE_SITE_LIMIT = 2;
-const STRIPE_URL = 'https://buy.stripe.com/00weVee9raiV6ascLZao80h';
-
 const SITES = [
   { id: 'instagram', name: 'Instagram', emoji: '\uD83D\uDCF7', domain: 'instagram.com' },
   { id: 'facebook', name: 'Facebook', emoji: '\uD83D\uDC64', domain: 'facebook.com' },
@@ -100,28 +97,6 @@ async function getStats() {
   });
 }
 
-async function getPremiumStatus() {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get(['isPremium'], (result) => {
-      resolve(result.isPremium || false);
-    });
-  });
-}
-
-function countEnabledSites(settings) {
-  let count = 0;
-  for (const site of SITES) {
-    if (settings.blockedSites && settings.blockedSites[site.id]) {
-      count++;
-    }
-  }
-  return count;
-}
-
-function openUpgradeLink() {
-  chrome.tabs.create({ url: STRIPE_URL });
-}
-
 function formatTimeSaved(minutes) {
   if (minutes < 60) return `${Math.round(minutes)}m`;
   const h = Math.floor(minutes / 60);
@@ -206,17 +181,9 @@ async function confirmPendingChanges() {
   updateConfirmButton();
 }
 
-function renderCustomSites(settings, locked, isPremium = true) {
+function renderCustomSites(settings, locked) {
   const container = document.getElementById('customSitesList');
-  const addCustomSection = document.querySelector('.add-custom-site');
   container.innerHTML = '';
-
-  // Hide custom sites section for free users
-  if (!isPremium) {
-    if (addCustomSection) addCustomSection.classList.add('hidden');
-    return;
-  }
-  if (addCustomSection) addCustomSection.classList.remove('hidden');
 
   const customSites = settings.customSites || [];
 
@@ -285,16 +252,10 @@ function renderCustomSites(settings, locked, isPremium = true) {
   });
 }
 
-function renderSiteList(container, sites, settingsKey, settings, locked, isPremium = true) {
+function renderSiteList(container, sites, settingsKey, settings, locked) {
   container.innerHTML = '';
 
-  // Count currently enabled sites for premium limit
-  let enabledCount = 0;
-  sites.forEach(site => {
-    if (settings[settingsKey] && settings[settingsKey][site.id]) enabledCount++;
-  });
-
-  sites.forEach((site, index) => {
+  sites.forEach((site) => {
     const row = document.createElement('div');
     row.className = 'site-row';
 
@@ -302,68 +263,42 @@ function renderSiteList(container, sites, settingsKey, settings, locked, isPremi
     const wasSaved = savedSettings && savedSettings[settingsKey] && savedSettings[settingsKey][site.id];
     const isPending = isChecked && !wasSaved;
 
-    // Premium limit: free users can only enable 2 sites
-    const atLimit = !isPremium && enabledCount >= FREE_SITE_LIMIT && !isChecked;
-    const isPremiumLocked = atLimit;
+    row.innerHTML = `
+      <div class="site-info">
+        <span class="site-emoji">${site.emoji}</span>
+        <span class="site-name">${site.name}</span>
+        ${isPending ? '<span class="pending-badge">new</span>' : ''}
+      </div>
+      <label class="toggle ${locked && wasSaved ? 'toggle-locked' : ''}">
+        <input type="checkbox" data-site="${site.id}" data-key="${settingsKey}" ${isChecked ? 'checked' : ''} ${locked && wasSaved ? 'disabled' : ''}>
+        <span class="toggle-slider"></span>
+        ${locked && wasSaved ? '<span class="toggle-lock-icon">&#x1F512;</span>' : ''}
+      </label>
+    `;
 
-    if (isPremiumLocked) {
-      row.innerHTML = `
-        <div class="site-info">
-          <span class="site-emoji">${site.emoji}</span>
-          <span class="site-name">${site.name}</span>
-        </div>
-        <span class="premium-badge" title="Upgrade to unlock">PRO</span>
-      `;
-      row.classList.add('premium-locked');
-      row.addEventListener('click', openUpgradeLink);
-    } else {
-      row.innerHTML = `
-        <div class="site-info">
-          <span class="site-emoji">${site.emoji}</span>
-          <span class="site-name">${site.name}</span>
-          ${isPending ? '<span class="pending-badge">new</span>' : ''}
-        </div>
-        <label class="toggle ${locked && wasSaved ? 'toggle-locked' : ''}">
-          <input type="checkbox" data-site="${site.id}" data-key="${settingsKey}" ${isChecked ? 'checked' : ''} ${locked && wasSaved ? 'disabled' : ''}>
-          <span class="toggle-slider"></span>
-          ${locked && wasSaved ? '<span class="toggle-lock-icon">&#x1F512;</span>' : ''}
-        </label>
-      `;
+    const checkbox = row.querySelector('input');
+    checkbox.addEventListener('change', async () => {
+      const wasChecked = pendingSettings[settingsKey][site.id];
+      pendingSettings[settingsKey][site.id] = checkbox.checked;
 
-      const checkbox = row.querySelector('input');
-      checkbox.addEventListener('change', async () => {
-        // Check premium limit when turning ON
-        if (checkbox.checked && !isPremium) {
-          const currentEnabled = countEnabledSites(pendingSettings);
-          if (currentEnabled >= FREE_SITE_LIMIT) {
-            checkbox.checked = false;
-            openUpgradeLink();
-            return;
-          }
-        }
+      // If turning OFF a site that was already saved (loosening restriction)
+      if (wasChecked && !checkbox.checked && savedSettings[settingsKey][site.id]) {
+        // This is immediate - save right away and re-lock
+        await saveSettings(pendingSettings);
+        const lockUntil = await setLock();
+        chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: pendingSettings });
+        showSaveToast();
 
-        const wasChecked = pendingSettings[settingsKey][site.id];
-        pendingSettings[settingsKey][site.id] = checkbox.checked;
-
-        // If turning OFF a site that was already saved (loosening restriction)
-        if (wasChecked && !checkbox.checked && savedSettings[settingsKey][site.id]) {
-          // This is immediate - save right away and re-lock
-          await saveSettings(pendingSettings);
-          const lockUntil = await setLock();
-          chrome.runtime.sendMessage({ type: 'settingsUpdated', settings: pendingSettings });
-          showSaveToast();
-
-          savedSettings = JSON.parse(JSON.stringify(pendingSettings));
-          renderSiteList(container, sites, settingsKey, pendingSettings, isLocked(lockUntil), isPremium);
-          renderCustomSites(pendingSettings, isLocked(lockUntil), isPremium);
-          updateLockBanner(lockUntil);
-        } else {
-          // Turning ON or turning OFF a pending change - just update UI
-          renderSiteList(container, sites, settingsKey, pendingSettings, locked, isPremium);
-          checkForPendingChanges();
-        }
-      });
-    }
+        savedSettings = JSON.parse(JSON.stringify(pendingSettings));
+        renderSiteList(container, sites, settingsKey, pendingSettings, isLocked(lockUntil));
+        renderCustomSites(pendingSettings, isLocked(lockUntil));
+        updateLockBanner(lockUntil);
+      } else {
+        // Turning ON or turning OFF a pending change - just update UI
+        renderSiteList(container, sites, settingsKey, pendingSettings, locked);
+        checkForPendingChanges();
+      }
+    });
 
     container.appendChild(row);
   });
@@ -432,7 +367,6 @@ async function init() {
   const settings = await getSettings();
   const stats = await getStats();
   const lockState = await getLockState();
-  const isPremium = await getPremiumStatus();
   const locked = isLocked(lockState.lockUntil);
 
   // Initialize saved and pending settings
@@ -441,7 +375,7 @@ async function init() {
   hasPendingChanges = false;
 
   if (!lockState.setupComplete) {
-    showSetupOverlay(settings, isPremium);
+    showSetupOverlay(settings);
     return;
   }
 
@@ -450,17 +384,6 @@ async function init() {
 
   const mainContent = document.getElementById('mainContent');
   if (mainContent) mainContent.classList.remove('hidden');
-
-  // Show/hide premium upgrade banner
-  const upgradeBanner = document.getElementById('upgradeBanner');
-  if (upgradeBanner) {
-    if (isPremium) {
-      upgradeBanner.classList.add('hidden');
-    } else {
-      upgradeBanner.classList.remove('hidden');
-      upgradeBanner.onclick = openUpgradeLink;
-    }
-  }
 
   updateLockBanner(lockState.lockUntil);
   if (locked) startCountdownTimer(lockState.lockUntil);
@@ -480,9 +403,9 @@ async function init() {
   });
 
   const siteList = document.getElementById('siteList');
-  renderSiteList(siteList, SITES, 'blockedSites', settings, locked, isPremium);
+  renderSiteList(siteList, SITES, 'blockedSites', settings, locked);
 
-  renderCustomSites(settings, locked, isPremium);
+  renderCustomSites(settings, locked);
 
   document.getElementById('addCustomSite').onclick = () => addCustomSite(locked);
   document.getElementById('customSiteInput').onkeydown = (e) => {
@@ -514,104 +437,46 @@ async function init() {
   });
 }
 
-function showSetupOverlay(settings, isPremium = false) {
+function showSetupOverlay(settings) {
   const setupOverlay = document.getElementById('setupOverlay');
   const mainContent = document.getElementById('mainContent');
 
   if (mainContent) mainContent.classList.add('hidden');
   if (setupOverlay) setupOverlay.classList.remove('hidden');
 
-  // Show/hide custom site section based on premium
-  const setupCustomSection = setupOverlay.querySelector('.add-custom-site');
-  if (setupCustomSection) {
-    if (isPremium) {
-      setupCustomSection.classList.remove('hidden');
-    } else {
-      setupCustomSection.classList.add('hidden');
-    }
-  }
-
-  // Show upgrade banner in setup if not premium
-  const setupUpgradeBanner = document.getElementById('setupUpgradeBanner');
-  if (setupUpgradeBanner) {
-    if (isPremium) {
-      setupUpgradeBanner.classList.add('hidden');
-    } else {
-      setupUpgradeBanner.classList.remove('hidden');
-      setupUpgradeBanner.onclick = openUpgradeLink;
-    }
-  }
-
   const setupSiteList = document.getElementById('setupSiteList');
   if (!setupSiteList) return;
 
-  function getCheckedCount() {
-    return setupSiteList.querySelectorAll('input[type="checkbox"]:checked').length;
-  }
+  setupSiteList.innerHTML = '';
 
-  function renderSetupSiteList() {
-    setupSiteList.innerHTML = '';
-    const checkedCount = getCheckedCount();
+  SITES.forEach((site) => {
+    const row = document.createElement('div');
+    row.className = 'site-row';
 
-    SITES.forEach((site) => {
-      const row = document.createElement('div');
-      row.className = 'site-row';
+    const isChecked = settings.blockedSites && settings.blockedSites[site.id];
 
-      const isChecked = settings.blockedSites && settings.blockedSites[site.id];
-      const atLimit = !isPremium && checkedCount >= FREE_SITE_LIMIT && !isChecked;
+    row.innerHTML = `
+      <div class="site-info">
+        <span class="site-emoji">${site.emoji}</span>
+        <span class="site-name">${site.name}</span>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" data-site="${site.id}" ${isChecked ? 'checked' : ''}>
+        <span class="toggle-slider"></span>
+      </label>
+    `;
 
-      if (atLimit) {
-        row.innerHTML = `
-          <div class="site-info">
-            <span class="site-emoji">${site.emoji}</span>
-            <span class="site-name">${site.name}</span>
-          </div>
-          <span class="premium-badge" title="Upgrade to unlock">PRO</span>
-        `;
-        row.classList.add('premium-locked');
-        row.addEventListener('click', openUpgradeLink);
-      } else {
-        row.innerHTML = `
-          <div class="site-info">
-            <span class="site-emoji">${site.emoji}</span>
-            <span class="site-name">${site.name}</span>
-          </div>
-          <label class="toggle">
-            <input type="checkbox" data-site="${site.id}" ${isChecked ? 'checked' : ''}>
-            <span class="toggle-slider"></span>
-          </label>
-        `;
-
-        const checkbox = row.querySelector('input');
-        checkbox.addEventListener('change', () => {
-          // If checking and at limit, uncheck and show upgrade
-          if (checkbox.checked && !isPremium && getCheckedCount() > FREE_SITE_LIMIT) {
-            checkbox.checked = false;
-            openUpgradeLink();
-            return;
-          }
-          // Update settings for tracking
-          settings.blockedSites[site.id] = checkbox.checked;
-          // Re-render to update premium badges
-          renderSetupSiteList();
-        });
-      }
-
-      setupSiteList.appendChild(row);
-    });
-  }
-
-  renderSetupSiteList();
+    setupSiteList.appendChild(row);
+  });
 
   const setupAddBtn = document.getElementById('setupAddCustomSite');
   const setupInput = document.getElementById('setupCustomInput');
   const setupCustomList = document.getElementById('setupCustomList');
 
-  let setupCustomSites = isPremium ? [...(settings.customSites || [])] : [];
+  let setupCustomSites = [...(settings.customSites || [])];
 
   function renderSetupCustomSites() {
     setupCustomList.innerHTML = '';
-    if (!isPremium) return;
     setupCustomSites.forEach((domain) => {
       const row = document.createElement('div');
       row.className = 'site-row custom-site-row';
@@ -632,37 +497,29 @@ function showSetupOverlay(settings, isPremium = false) {
 
   renderSetupCustomSites();
 
-  if (setupAddBtn) {
-    setupAddBtn.onclick = () => {
-      if (!isPremium) {
-        openUpgradeLink();
-        return;
-      }
-      const domain = normalizeDomain(setupInput.value);
-      if (!domain || !isValidDomain(domain)) {
-        setupInput.classList.add('error');
-        setTimeout(() => setupInput.classList.remove('error'), 500);
-        return;
-      }
-      if (setupCustomSites.includes(domain)) { setupInput.value = ''; return; }
-      const presetDomains = SITES.map(s => s.domain);
-      if (presetDomains.some(d => domain.includes(d) || d.includes(domain))) {
-        setupInput.classList.add('error');
-        setTimeout(() => setupInput.classList.remove('error'), 500);
-        setupInput.value = '';
-        return;
-      }
-      setupCustomSites.push(domain);
+  setupAddBtn.onclick = () => {
+    const domain = normalizeDomain(setupInput.value);
+    if (!domain || !isValidDomain(domain)) {
+      setupInput.classList.add('error');
+      setTimeout(() => setupInput.classList.remove('error'), 500);
+      return;
+    }
+    if (setupCustomSites.includes(domain)) { setupInput.value = ''; return; }
+    const presetDomains = SITES.map(s => s.domain);
+    if (presetDomains.some(d => domain.includes(d) || d.includes(domain))) {
+      setupInput.classList.add('error');
+      setTimeout(() => setupInput.classList.remove('error'), 500);
       setupInput.value = '';
-      renderSetupCustomSites();
-    };
-  }
+      return;
+    }
+    setupCustomSites.push(domain);
+    setupInput.value = '';
+    renderSetupCustomSites();
+  };
 
-  if (setupInput) {
-    setupInput.onkeydown = (e) => {
-      if (e.key === 'Enter' && setupAddBtn) setupAddBtn.onclick();
-    };
-  }
+  setupInput.onkeydown = (e) => {
+    if (e.key === 'Enter') setupAddBtn.onclick();
+  };
 
   const lockInBtn = document.getElementById('lockInBtn');
   lockInBtn.onclick = async () => {
@@ -690,7 +547,7 @@ function showSetupOverlay(settings, isPremium = false) {
     const newSettings = {
       focusMode: true,
       blockedSites,
-      customSites: isPremium ? setupCustomSites : [],
+      customSites: setupCustomSites,
     };
 
     await saveSettings(newSettings);
