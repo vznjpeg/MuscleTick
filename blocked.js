@@ -1,6 +1,6 @@
 // Dopamine Detox - Blocked Page Controller
 
-const SHAME_PHRASE = 'I am choosing to scroll instead of being productive';
+const SHAME_PHRASE = 'i am choosing to scroll instead of being productive';
 const BASE_REPS = 3;
 
 const MOTIVATION_QUOTES = [
@@ -150,6 +150,7 @@ function initTypingChallenge() {
   document.getElementById('currentLine').textContent = 1;
 
   const input = document.getElementById('typingInput');
+  let shakeTimeout = null;
 
   // Render initial char display (all dim)
   renderCharDisplay('');
@@ -165,6 +166,13 @@ function initTypingChallenge() {
 
   // Listen for input changes
   input.addEventListener('input', () => {
+    // Cancel any pending shake reset so it doesn't wipe new input
+    if (shakeTimeout) {
+      clearTimeout(shakeTimeout);
+      shakeTimeout = null;
+      input.classList.remove('shake');
+    }
+
     const typed = input.value;
 
     // Check each character
@@ -173,11 +181,15 @@ function initTypingChallenge() {
         // Typo detected -- flash red, reset this line
         renderCharDisplay(typed, i);
         input.classList.add('shake');
-        setTimeout(() => {
+        input.disabled = true;
+        shakeTimeout = setTimeout(() => {
           input.value = '';
           input.classList.remove('shake');
+          input.disabled = false;
           renderCharDisplay('');
-        }, 400);
+          input.focus();
+          shakeTimeout = null;
+        }, 500);
         return;
       }
     }
