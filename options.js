@@ -10,21 +10,6 @@ const SITES = [
   { id: 'reddit', name: 'Reddit', emoji: '\uD83E\uDD16' },
 ];
 
-const EXERCISES = [
-  { id: 'pushups', name: '15 Pushups', emoji: '\uD83E\uDDD1\u200D\uD83C\uDFCB\uFE0F' },
-  { id: 'squats', name: '10 Squats', emoji: '\uD83E\uDDCE' },
-  { id: 'highknees', name: '20 High Knees', emoji: '\uD83C\uDFC3' },
-  { id: 'wallsit', name: '30s Wall Sit', emoji: '\uD83E\uDDF1' },
-  { id: 'jumpingjacks', name: '15 Jumping Jacks', emoji: '\u2B50' },
-  { id: 'burpees', name: '10 Burpees', emoji: '\uD83D\uDD25' },
-  { id: 'crunches', name: '20 Crunches', emoji: '\uD83E\uDEE0' },
-  { id: 'lunges', name: '15 Lunges', emoji: '\uD83E\uDDB6' },
-  { id: 'dips', name: '10 Tricep Dips', emoji: '\uD83D\uDCBA' },
-  { id: 'plank', name: '30s Plank', emoji: '\uD83E\uDDF1' },
-  { id: 'mountainclimbers', name: '20 Mountain Climbers', emoji: '\u26F0\uFE0F' },
-  { id: 'calfraises', name: '15 Calf Raises', emoji: '\uD83E\uDDB6' },
-];
-
 const DEFAULT_SETTINGS = {
   focusMode: true,
   blockedSites: {
@@ -37,9 +22,8 @@ const DEFAULT_SETTINGS = {
     reddit: false,
   },
   customSites: [],
-  baseTimer: 30,
-  penaltyIncrement: 30,
-  enabledExercises: ['pushups', 'squats', 'highknees', 'wallsit', 'jumpingjacks', 'burpees', 'crunches', 'lunges', 'dips', 'plank', 'mountainclimbers', 'calfraises'],
+  baseReps: 3,
+  penaltyExtraReps: 1,
 };
 
 async function getSettings() {
@@ -97,84 +81,35 @@ function renderSiteList(containerId, sites, settingsKey, settings) {
   });
 }
 
-function renderExerciseGrid(settings) {
-  const container = document.getElementById('exerciseGrid');
-  if (!container) return;
-  container.innerHTML = '';
-
-  const enabled = settings.enabledExercises || DEFAULT_SETTINGS.enabledExercises;
-
-  EXERCISES.forEach((exercise) => {
-    const isSelected = enabled.includes(exercise.id);
-    const item = document.createElement('label');
-    item.className = `exercise-item ${isSelected ? 'selected' : ''}`;
-    item.innerHTML = `
-      <input type="checkbox" data-exercise="${exercise.id}" ${isSelected ? 'checked' : ''}>
-      <span class="exercise-emoji">${exercise.emoji}</span>
-      <span class="exercise-name">${exercise.name}</span>
-    `;
-
-    const checkbox = item.querySelector('input');
-    checkbox.addEventListener('change', async () => {
-      const current = await getSettings();
-      const enabledExercises = current.enabledExercises || [...DEFAULT_SETTINGS.enabledExercises];
-
-      if (checkbox.checked) {
-        if (!enabledExercises.includes(exercise.id)) {
-          enabledExercises.push(exercise.id);
-        }
-        item.classList.add('selected');
-      } else {
-        if (enabledExercises.length <= 3) {
-          checkbox.checked = true;
-          return;
-        }
-        const idx = enabledExercises.indexOf(exercise.id);
-        if (idx > -1) enabledExercises.splice(idx, 1);
-        item.classList.remove('selected');
-      }
-
-      current.enabledExercises = enabledExercises;
-      await saveSettings(current);
-      showSaveNotice();
-    });
-
-    container.appendChild(item);
-  });
-}
-
 async function init() {
   const settings = await getSettings();
 
   // Render blocked sites list
   renderSiteList('blockedSitesList', SITES, 'blockedSites', settings);
 
-  // Timer settings
-  const baseTimer = document.getElementById('baseTimer');
-  const penaltyIncrement = document.getElementById('penaltyIncrement');
+  // Challenge settings
+  const baseReps = document.getElementById('baseReps');
+  const penaltyExtraReps = document.getElementById('penaltyExtraReps');
 
-  if (baseTimer) {
-    baseTimer.value = settings.baseTimer || 30;
-    baseTimer.addEventListener('change', async () => {
+  if (baseReps) {
+    baseReps.value = settings.baseReps || 3;
+    baseReps.addEventListener('change', async () => {
       const current = await getSettings();
-      current.baseTimer = parseInt(baseTimer.value);
+      current.baseReps = parseInt(baseReps.value);
       await saveSettings(current);
       showSaveNotice();
     });
   }
 
-  if (penaltyIncrement) {
-    penaltyIncrement.value = settings.penaltyIncrement || 30;
-    penaltyIncrement.addEventListener('change', async () => {
+  if (penaltyExtraReps) {
+    penaltyExtraReps.value = settings.penaltyExtraReps || 1;
+    penaltyExtraReps.addEventListener('change', async () => {
       const current = await getSettings();
-      current.penaltyIncrement = parseInt(penaltyIncrement.value);
+      current.penaltyExtraReps = parseInt(penaltyExtraReps.value);
       await saveSettings(current);
       showSaveNotice();
     });
   }
-
-  // Exercise grid
-  renderExerciseGrid(settings);
 
   // Export data
   const exportBtn = document.getElementById('exportData');

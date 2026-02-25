@@ -1,27 +1,27 @@
-// MuscleTick Stats Page
+// Dopamine Detox Stats Page
 
 const ACHIEVEMENTS = [
   { id: 'first_block', icon: '\uD83C\uDF1F', name: 'First Block', desc: 'Blocked your first site', condition: (s) => s.totalBlockedAttempts >= 1 },
-  { id: 'first_workout', icon: '\uD83D\uDCAA', name: 'First Rep', desc: 'Completed your first exercise', condition: (s) => s.exercisesDone >= 1 },
+  { id: 'first_workout', icon: '\uD83D\uDCAA', name: 'First Rep', desc: 'Completed your first challenge', condition: (s) => s.exercisesDone >= 1 },
   { id: 'streak_3', icon: '\uD83D\uDD25', name: 'On Fire', desc: '3 day streak', condition: (s) => s.streak >= 3 },
   { id: 'streak_7', icon: '\uD83C\uDFC6', name: 'Week Warrior', desc: '7 day streak', condition: (s) => s.streak >= 7 },
   { id: 'streak_30', icon: '\uD83D\uDC51', name: 'Monthly King', desc: '30 day streak', condition: (s) => s.streak >= 30 },
   { id: 'blocks_10', icon: '\uD83D\uDEE1\uFE0F', name: 'Defender', desc: '10 distractions blocked', condition: (s) => s.totalBlockedAttempts >= 10 },
   { id: 'blocks_50', icon: '\uD83E\uDDF1', name: 'Fortress', desc: '50 distractions blocked', condition: (s) => s.totalBlockedAttempts >= 50 },
   { id: 'blocks_100', icon: '\uD83C\uDFF0', name: 'Unbreakable', desc: '100 distractions blocked', condition: (s) => s.totalBlockedAttempts >= 100 },
-  { id: 'exercises_10', icon: '\uD83C\uDFCB\uFE0F', name: 'Gym Rat', desc: '10 exercises done', condition: (s) => s.exercisesDone >= 10 },
-  { id: 'exercises_50', icon: '\uD83E\uDDBE', name: 'Iron Will', desc: '50 exercises done', condition: (s) => s.exercisesDone >= 50 },
+  { id: 'exercises_10', icon: '\uD83C\uDFCB\uFE0F', name: 'Dedicated', desc: '10 challenges done', condition: (s) => s.exercisesDone >= 10 },
+  { id: 'exercises_50', icon: '\uD83E\uDDBE', name: 'Iron Will', desc: '50 challenges done', condition: (s) => s.exercisesDone >= 50 },
   { id: 'time_60', icon: '\u23F0', name: 'Hour Saver', desc: '1 hour saved', condition: (s) => s.timeSaved >= 60 },
   { id: 'time_300', icon: '\uD83D\uDCF5', name: 'Digital Detox', desc: '5 hours saved', condition: (s) => s.timeSaved >= 300 },
 ];
 
 const FUN_FACTS = [
   (s) => `You've saved ${formatTime(s.timeSaved)} - that's enough time to learn ${Math.floor(s.timeSaved / 30)} new recipes! \uD83C\uDF73`,
-  (s) => `${s.exercisesDone} exercises done! That's roughly ${s.exercisesDone * 8} calories burned \uD83D\uDD25`,
+  (s) => `${s.exercisesDone} challenges completed! That's roughly ${s.exercisesDone * 50} characters of self-reflection \uD83D\uDD25`,
   (s) => `You've resisted temptation ${s.totalBlockedAttempts} times. Willpower level: ${getWillpowerLevel(s.totalBlockedAttempts)} \uD83E\uDDE0`,
   (s) => `Time saved: ${formatTime(s.timeSaved)}. That's ${Math.floor(s.timeSaved / 120)} movie's worth of productivity! \uD83C\uDFAC`,
   (s) => `With ${s.streak} day streak, you're in the top ${Math.max(1, 100 - s.streak * 2)}% of focusers! \uD83D\uDCC8`,
-  (s) => `${s.exercisesDone * 15} pushups worth of exercise completed. Your future self thanks you! \uD83D\uDE4F`,
+  (s) => `${s.exercisesDone} shame phrases typed. Your self-awareness is leveling up! \uD83D\uDE4F`,
   (s) => `Average person spends 2.5 hours daily on social media. You're built different. \uD83D\uDCAA`,
 ];
 
@@ -46,7 +46,7 @@ function formatTimeContext(minutes) {
   const hours = minutes / 60;
   if (hours >= 10) return `that's like watching ${Math.floor(hours / 2)} movies`;
   if (hours >= 2) return `that's like reading ${Math.floor(hours / 3)} book chapters`;
-  if (minutes >= 30) return `that's like ${Math.floor(minutes / 20)} workout sessions`;
+  if (minutes >= 30) return `that's like ${Math.floor(minutes / 20)} study sessions`;
   return `keep going, every minute counts!`;
 }
 

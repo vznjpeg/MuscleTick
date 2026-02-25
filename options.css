@@ -279,47 +279,6 @@ h2 {
   background: var(--red);
 }
 
-/* Exercise Grid */
-.exercise-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
-}
-
-.exercise-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: rgba(0,0,0,0.2);
-  border-radius: 12px;
-  padding: 12px 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 2px solid transparent;
-}
-
-.exercise-item:hover {
-  background: rgba(0,0,0,0.3);
-}
-
-.exercise-item.selected {
-  border-color: var(--green);
-  background: rgba(0, 230, 118, 0.1);
-}
-
-.exercise-item input {
-  display: none;
-}
-
-.exercise-emoji {
-  font-size: 22px;
-}
-
-.exercise-name {
-  font-size: 13px;
-  font-weight: 600;
-}
-
 /* Save Notice */
 .save-notice {
   position: fixed;

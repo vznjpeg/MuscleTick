@@ -1,38 +1,22 @@
 // Dopamine Detox - Blocked Page Controller
 
-const EXERCISES = [
-  { name: '15 Pushups', emoji: '\uD83E\uDDD1\u200D\uD83C\uDFCB\uFE0F', desc: 'chest to the ground, full extension up', icon: '\uD83D\uDCAA' },
-  { name: '10 Squats', emoji: '\uD83E\uDDCE', desc: 'thighs parallel to the floor, back straight', icon: '\uD83E\uDDB5' },
-  { name: '20 High Knees', emoji: '\uD83C\uDFC3', desc: 'drive those knees up, keep it fast', icon: '\u26A1' },
-  { name: '30s Wall Sit', emoji: '\uD83E\uDDF1', desc: 'back flat against wall, thighs parallel', icon: '\uD83C\uDFCB\uFE0F' },
-  { name: '15 Jumping Jacks', emoji: '\u2B50', desc: 'arms overhead, feet apart, stay bouncy', icon: '\uD83C\uDF1F' },
-  { name: '10 Burpees', emoji: '\uD83D\uDD25', desc: 'drop, push up, jump up, repeat', icon: '\uD83D\uDE80' },
-  { name: '20 Crunches', emoji: '\uD83E\uDEE0', desc: 'hands behind head, squeeze at the top', icon: '\uD83C\uDFAF' },
-  { name: '15 Lunges', emoji: '\uD83E\uDDB6', desc: 'alternate legs, knee almost touches ground', icon: '\uD83D\uDC63' },
-  { name: '10 Tricep Dips', emoji: '\uD83D\uDCBA', desc: 'use a chair, lower slow, push up fast', icon: '\uD83D\uDCAA' },
-  { name: '30s Plank', emoji: '\uD83E\uDDF1', desc: 'straight line from head to heels, hold it', icon: '\u23F1\uFE0F' },
-  { name: '20 Mountain Climbers', emoji: '\u26F0\uFE0F', desc: 'fast feet, keep your core tight', icon: '\uD83D\uDD25' },
-  { name: '15 Calf Raises', emoji: '\uD83E\uDDB6', desc: 'rise up on your toes, squeeze at the top', icon: '\u2B06\uFE0F' },
-];
+const SHAME_PHRASE = 'I am choosing to scroll instead of being productive';
+const BASE_REPS = 3;
 
 const MOTIVATION_QUOTES = [
-  '"the only bad workout is the one that didn\'t happen" - some gym bro',
   '"your future self is watching you through memories" - probably tiktok',
   '"touch grass > touch screen" - ancient proverb',
   '"the grind never stops but your doom scrolling should" - sigma wisdom',
-  '"be the main character of the gym, not the feed" - gen z confucius',
   '"1% better every day, 100% less scrolling" - math',
-  '"the algorithm can wait, your gains can\'t" - truth',
+  '"the algorithm can wait, your goals can\'t" - truth',
+  '"be the main character of your life, not the feed" - gen z confucius',
+  '"average person spends 2.5 hours daily on social media. you\'re built different." - facts',
 ];
 
-let currentExercise = null;
-let timerSeconds = 30;
-const baseTimer = 30;
-const penaltyIncrement = 30;
-let timerInterval = null;
+let totalReps = BASE_REPS;
+let currentRep = 0;
+let challengeCompleted = false;
 let violationsToday = 0;
-let exerciseCompleted = false;
-const circumference = 2 * Math.PI * 54;
 
 // Get blocked site name from URL params
 const urlParams = new URLSearchParams(window.location.search);
@@ -80,7 +64,7 @@ async function recordViolation() {
   });
 }
 
-async function recordExercise() {
+async function recordChallenge() {
   return new Promise((resolve) => {
     chrome.storage.sync.get(['stats'], (result) => {
       const stats = result.stats || { totalBlockedAttempts: 0, exercisesDone: 0, streak: 0, dailyBlocks: {}, timeSaved: 0 };
@@ -102,75 +86,127 @@ async function recordExercise() {
   });
 }
 
-function pickExercise() {
-  let exercise;
-  do {
-    exercise = EXERCISES[Math.floor(Math.random() * EXERCISES.length)];
-  } while (exercise === currentExercise && EXERCISES.length > 1);
-  currentExercise = exercise;
-  return exercise;
+function calculateReps() {
+  const extraReps = Math.max(0, violationsToday - 1);
+  totalReps = BASE_REPS + extraReps;
+  return totalReps;
 }
 
-function showExercise(exercise) {
-  document.getElementById('exerciseIcon').textContent = exercise.icon;
-  document.getElementById('exerciseEmoji').textContent = exercise.emoji;
-  document.getElementById('exerciseName').textContent = exercise.name;
-  document.getElementById('exerciseDesc').textContent = exercise.desc;
-}
+function renderCharDisplay(typed, errorIndex = -1) {
+  const charDisplay = document.getElementById('charDisplay');
+  let html = '';
 
-function startTimer() {
-  const penaltyMultiplier = Math.max(0, violationsToday - 1);
-  timerSeconds = baseTimer + (penaltyMultiplier * penaltyIncrement);
-
-  const totalSeconds = timerSeconds;
-  const ringEl = document.getElementById('ringProgress');
-  const textEl = document.getElementById('timerText');
-
-  ringEl.style.strokeDasharray = circumference;
-  ringEl.style.strokeDashoffset = '0';
-  textEl.textContent = timerSeconds;
-
-  if (penaltyMultiplier > 0) {
-    const notice = document.getElementById('penaltyNotice');
-    notice.classList.remove('hidden');
-    document.getElementById('penaltyCount').textContent = penaltyMultiplier;
+  for (let i = 0; i < SHAME_PHRASE.length; i++) {
+    const char = SHAME_PHRASE[i] === ' ' ? '&nbsp;' : SHAME_PHRASE[i];
+    if (i === errorIndex) {
+      html += `<span class="char char-error">${char}</span>`;
+    } else if (i < typed.length) {
+      html += `<span class="char char-correct">${char}</span>`;
+    } else {
+      html += `<span class="char char-pending">${char}</span>`;
+    }
   }
 
-  timerInterval = setInterval(() => {
-    timerSeconds--;
-    textEl.textContent = Math.max(0, timerSeconds);
+  charDisplay.innerHTML = html;
+}
 
-    const progress = (totalSeconds - timerSeconds) / totalSeconds;
-    ringEl.style.strokeDashoffset = circumference * (1 - progress);
+function completeLine() {
+  currentRep++;
+  const input = document.getElementById('typingInput');
 
-    if (progress > 0.75) {
-      ringEl.style.stroke = '#00e676';
-      textEl.style.color = '#00e676';
-    } else if (progress > 0.5) {
-      ringEl.style.stroke = '#ffd600';
-      textEl.style.color = '#ffd600';
+  // Add completed line to the completed-lines area
+  const completedLines = document.getElementById('completedLines');
+  const lineDiv = document.createElement('div');
+  lineDiv.className = 'completed-line';
+  lineDiv.textContent = SHAME_PHRASE;
+  completedLines.appendChild(lineDiv);
+
+  if (currentRep >= totalReps) {
+    // All reps done
+    input.disabled = true;
+    showDonePhase();
+    return;
+  }
+
+  // Reset for next line
+  input.value = '';
+  renderCharDisplay('');
+  document.getElementById('currentLine').textContent = currentRep + 1;
+  input.focus();
+}
+
+function initTypingChallenge() {
+  calculateReps();
+
+  // Show penalty notice if escalation applies
+  if (violationsToday > 1) {
+    const notice = document.getElementById('penaltyNotice');
+    notice.classList.remove('hidden');
+    document.getElementById('penaltyCount').textContent = violationsToday - 1;
+    document.getElementById('penaltyViolations').textContent = violationsToday;
+  }
+
+  document.getElementById('totalLines').textContent = totalReps;
+  document.getElementById('currentLine').textContent = 1;
+
+  const input = document.getElementById('typingInput');
+
+  // Render initial char display (all dim)
+  renderCharDisplay('');
+
+  // Prevent paste
+  input.addEventListener('paste', (e) => e.preventDefault());
+
+  // Prevent drag-and-drop text
+  input.addEventListener('drop', (e) => e.preventDefault());
+
+  // Prevent right-click paste
+  input.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  // Listen for input changes
+  input.addEventListener('input', () => {
+    const typed = input.value;
+
+    // Check each character
+    for (let i = 0; i < typed.length; i++) {
+      if (typed[i] !== SHAME_PHRASE[i]) {
+        // Typo detected -- flash red, reset this line
+        renderCharDisplay(typed, i);
+        input.classList.add('shake');
+        setTimeout(() => {
+          input.value = '';
+          input.classList.remove('shake');
+          renderCharDisplay('');
+        }, 400);
+        return;
+      }
     }
 
-    if (timerSeconds <= 0) {
-      clearInterval(timerInterval);
-      showDonePhase();
+    // All typed characters match so far
+    renderCharDisplay(typed);
+
+    // Check if line is complete
+    if (typed === SHAME_PHRASE) {
+      completeLine();
     }
-  }, 1000);
+  });
+
+  input.focus();
 }
 
 function showDonePhase() {
-  exerciseCompleted = true;
-  document.getElementById('phaseExercise').classList.add('hidden');
+  challengeCompleted = true;
+  document.getElementById('phaseChallenge').classList.add('hidden');
   document.getElementById('phaseDone').classList.remove('hidden');
 
   const quote = MOTIVATION_QUOTES[Math.floor(Math.random() * MOTIVATION_QUOTES.length)];
   document.getElementById('motivationQuote').textContent = quote;
 
-  recordExercise();
+  recordChallenge();
 }
 
 function handleProceedClick() {
-  if (!exerciseCompleted) return;
+  if (!challengeCompleted) return;
 
   const btn = document.getElementById('proceedBtn');
   btn.disabled = true;
@@ -198,11 +234,6 @@ function handleProceedClick() {
 
 function handleStayFocusedClick() {
   window.location.href = 'https://www.google.com';
-}
-
-function handleRerollClick() {
-  const exercise = pickExercise();
-  showExercise(exercise);
 }
 
 // Emergency Pass Functions
@@ -286,7 +317,7 @@ async function initEmergencyPass() {
 
   if (used) {
     emergencyBtn.disabled = true;
-    emergencyBtn.textContent = '&#x1F6A8; emergency pass used';
+    emergencyBtn.textContent = '\uD83D\uDEA8 emergency pass used';
     emergencyPass.classList.add('used');
     document.querySelector('.emergency-note').textContent = 'already used in the last 24 hours';
   } else {
@@ -298,16 +329,12 @@ async function init() {
   // Attach event listeners
   const proceedBtn = document.getElementById('proceedBtn');
   const stayFocusedBtn = document.getElementById('stayFocused');
-  const rerollBtn = document.getElementById('rerollExercise');
 
   if (proceedBtn) {
     proceedBtn.onclick = handleProceedClick;
   }
   if (stayFocusedBtn) {
     stayFocusedBtn.onclick = handleStayFocusedClick;
-  }
-  if (rerollBtn) {
-    rerollBtn.onclick = handleRerollClick;
   }
 
   await loadViolations();
@@ -318,10 +345,7 @@ async function init() {
   const el = document.getElementById('blockedSiteName');
   if (el) el.textContent = siteName;
 
-  const exercise = pickExercise();
-  showExercise(exercise);
-
-  startTimer();
+  initTypingChallenge();
 
   // Initialize emergency pass
   initEmergencyPass();

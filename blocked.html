@@ -3,53 +3,42 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dopamine Detox - Time to Move!</title>
+  <title>Dopamine Detox - Time to Reflect</title>
   <link rel="stylesheet" href="blocked.css">
 </head>
 <body>
   <div class="container">
-    <!-- Exercise Challenge (shown immediately) -->
-    <div class="phase" id="phaseExercise">
-      <div class="exercise-icon" id="exerciseIcon">&#x1F4AA;</div>
-      <h1 id="exerciseTitle">time to move!</h1>
-      <p class="sub" id="exerciseSub">you wanted <span id="blockedSiteName">this site</span>? earn it.</p>
+    <!-- Typing Challenge (shown immediately) -->
+    <div class="phase" id="phaseChallenge">
+      <div class="challenge-icon">&#x270D;&#xFE0F;</div>
+      <h1>time to reflect.</h1>
+      <p class="sub">you wanted <span id="blockedSiteName">this site</span>? type for it.</p>
 
-      <div class="timer-ring" id="timerRing">
-        <svg viewBox="0 0 120 120">
-          <circle class="ring-bg" cx="60" cy="60" r="54" />
-          <circle class="ring-progress" id="ringProgress" cx="60" cy="60" r="54" />
-        </svg>
-        <div class="timer-text" id="timerText">30</div>
+      <div class="shame-phrase" id="shamePhrase">
+        "I am choosing to scroll instead of being productive"
       </div>
 
-      <div class="exercise-card" id="exerciseCard">
-        <span class="exercise-emoji" id="exerciseEmoji">&#x1F9CE;</span>
-        <div class="exercise-details">
-          <span class="exercise-name" id="exerciseName">15 Pushups</span>
-          <span class="exercise-desc" id="exerciseDesc">chest to the ground, full extension up</span>
-        </div>
+      <div class="typing-progress">
+        line <span id="currentLine">1</span> of <span id="totalLines">3</span>
+      </div>
+
+      <div class="completed-lines" id="completedLines"></div>
+
+      <div class="typing-area">
+        <div class="char-display" id="charDisplay"></div>
+        <input type="text" id="typingInput" autocomplete="off" autocorrect="off"
+               autocapitalize="off" spellcheck="false" placeholder="start typing..." />
       </div>
 
       <div class="penalty-notice hidden" id="penaltyNotice">
         <span>&#x26A0;&#xFE0F;</span>
-        <span>+30s added! that's <span id="penaltyCount">1</span> rule break(s) today</span>
-      </div>
-
-      <div class="btn-row">
-        <button class="btn-secondary" id="rerollExercise">&#x1F3B2; different exercise</button>
+        <span>+<span id="penaltyCount">1</span> extra rep(s)! that's <span id="penaltyViolations">2</span> rule break(s) today</span>
       </div>
 
       <!-- Emergency Pass -->
       <div class="emergency-pass" id="emergencyPass">
         <button class="btn-emergency" id="emergencyBtn">&#x1F6A8; use emergency pass</button>
-        <p class="emergency-note">permanently unblock this site (1 use per lock period)</p>
-      </div>
-
-      <div class="waiting-message" id="waitingMessage">
-        <p>do your reps while the timer counts down</p>
-        <div class="bounce-dots">
-          <span></span><span></span><span></span>
-        </div>
+        <p class="emergency-note">permanently unblock this site (1 use every 24hrs)</p>
       </div>
     </div>
 

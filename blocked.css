@@ -72,16 +72,10 @@ body::before {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Phase 1: Password */
-.lock-icon {
-  font-size: 64px;
-  animation: shake 0.5s ease-in-out;
-}
-
 @keyframes shake {
-  0%, 100% { transform: rotate(0); }
-  25% { transform: rotate(-10deg); }
-  75% { transform: rotate(10deg); }
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
 }
 
 h1 {
@@ -95,31 +89,6 @@ h1 {
   font-size: 15px;
   color: var(--text-dim);
   font-weight: 500;
-}
-
-input[type="password"] {
-  width: 100%;
-  max-width: 320px;
-  padding: 16px 20px;
-  background: var(--surface);
-  border: 2px solid rgba(255,255,255,0.1);
-  border-radius: 14px;
-  color: var(--text);
-  font-family: inherit;
-  font-size: 16px;
-  font-weight: 600;
-  text-align: center;
-  outline: none;
-  transition: border-color 0.3s;
-}
-
-input[type="password"]:focus {
-  border-color: var(--accent);
-}
-
-input[type="password"]::placeholder {
-  color: var(--text-dim);
-  font-weight: 400;
 }
 
 .btn-primary {
@@ -168,116 +137,128 @@ input[type="password"]::placeholder {
   background: rgba(233, 69, 96, 0.1);
 }
 
-.password-fails {
-  min-height: 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.fail-msg {
-  font-size: 13px;
-  color: var(--accent);
-  font-weight: 600;
-  animation: fadeIn 0.3s ease;
-}
-
-.hint-text {
-  font-size: 12px;
-  color: var(--text-dim);
-  opacity: 0;
-  transition: opacity 0.5s;
-  font-style: italic;
-}
-
-.hint-text.visible {
-  opacity: 1;
-}
-
-/* Phase 2: Exercise */
-.exercise-icon {
+/* Challenge Icon */
+.challenge-icon {
   font-size: 56px;
-  animation: pulse 1.5s ease-in-out infinite;
 }
 
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-}
-
-/* Timer Ring */
-.timer-ring {
-  position: relative;
-  width: 160px;
-  height: 160px;
-  margin: 8px 0;
-}
-
-.timer-ring svg {
-  width: 100%;
-  height: 100%;
-  transform: rotate(-90deg);
-}
-
-.ring-bg {
-  fill: none;
-  stroke: var(--surface);
-  stroke-width: 8;
-}
-
-.ring-progress {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 8;
-  stroke-linecap: round;
-  stroke-dasharray: 339.292;
-  stroke-dashoffset: 0;
-  transition: stroke-dashoffset 1s linear, stroke 0.5s;
-}
-
-.timer-text {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 48px;
-  font-weight: 900;
-  color: var(--accent);
-}
-
-/* Exercise Card */
-.exercise-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+/* Shame Phrase Display */
+.shame-phrase {
+  font-size: 14px;
+  color: var(--text-dim);
+  font-style: italic;
   background: var(--surface);
-  border-radius: 16px;
-  padding: 16px 24px;
-  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 14px 20px;
+  max-width: 380px;
   width: 100%;
-  max-width: 340px;
+  border: 1px solid rgba(255,255,255,0.08);
+  line-height: 1.6;
 }
 
-.exercise-emoji {
-  font-size: 36px;
+/* Typing Progress Counter */
+.typing-progress {
+  font-size: 14px;
+  color: var(--text-dim);
+  font-weight: 600;
 }
 
-.exercise-details {
-  display: flex;
-  flex-direction: column;
+.typing-progress span {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+/* Character Display */
+.char-display {
+  font-family: 'Inter', monospace;
+  font-size: 16px;
+  line-height: 1.8;
+  max-width: 380px;
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  min-height: 48px;
+  word-break: break-word;
+  letter-spacing: 0.5px;
   text-align: left;
 }
 
-.exercise-name {
-  font-size: 18px;
-  font-weight: 800;
+.char {
+  transition: color 0.1s;
+}
+
+.char-correct {
   color: var(--green);
 }
 
-.exercise-desc {
-  font-size: 12px;
+.char-error {
+  color: var(--accent);
+  background: rgba(233, 69, 96, 0.2);
+  border-radius: 2px;
+}
+
+.char-pending {
+  color: rgba(255,255,255,0.2);
+}
+
+/* Typing Input */
+.typing-area {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#typingInput {
+  width: 100%;
+  padding: 16px 20px;
+  background: var(--surface);
+  border: 2px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+#typingInput:focus {
+  border-color: var(--accent);
+}
+
+#typingInput::placeholder {
   color: var(--text-dim);
-  margin-top: 2px;
+  font-weight: 400;
+}
+
+#typingInput.shake {
+  animation: shake 0.4s ease-in-out;
+  border-color: var(--accent);
+}
+
+/* Completed Lines */
+.completed-lines {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.completed-line {
+  font-size: 13px;
+  color: var(--green);
+  opacity: 0.5;
+  text-decoration: line-through;
+  padding: 6px 12px;
+  background: rgba(0, 230, 118, 0.05);
+  border-radius: 8px;
+  text-align: left;
+  animation: fadeIn 0.3s ease;
 }
 
 /* Penalty Notice */
@@ -295,45 +276,7 @@ input[type="password"]::placeholder {
   animation: fadeIn 0.4s ease;
 }
 
-.btn-row {
-  display: flex;
-  gap: 10px;
-}
-
-.waiting-message {
-  margin-top: 8px;
-}
-
-.waiting-message p {
-  font-size: 13px;
-  color: var(--text-dim);
-  font-weight: 500;
-}
-
-.bounce-dots {
-  display: flex;
-  gap: 6px;
-  justify-content: center;
-  margin-top: 8px;
-}
-
-.bounce-dots span {
-  width: 8px;
-  height: 8px;
-  background: var(--accent);
-  border-radius: 50%;
-  animation: bounce 1.4s ease-in-out infinite;
-}
-
-.bounce-dots span:nth-child(2) { animation-delay: 0.16s; }
-.bounce-dots span:nth-child(3) { animation-delay: 0.32s; }
-
-@keyframes bounce {
-  0%, 80%, 100% { transform: translateY(0); }
-  40% { transform: translateY(-12px); }
-}
-
-/* Phase 3: Done */
+/* Done Phase */
 .done-icon {
   font-size: 64px;
   animation: celebrate 0.6s ease;
