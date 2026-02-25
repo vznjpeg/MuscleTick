@@ -5,7 +5,6 @@
   "description": "Dopamine Detox - Block distracting sites & earn your scroll by typing shame phrases.",
   "permissions": [
     "storage",
-    "tabs",
     "webNavigation",
     "alarms"
   ],
